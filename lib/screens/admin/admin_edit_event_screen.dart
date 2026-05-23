@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../data/event_types.dart';
 import '../../widgets/wtva/neighborhood_dropdown.dart';
 
 class AdminEditEventScreen extends StatefulWidget {
@@ -42,7 +43,7 @@ class _AdminEditEventScreenState extends State<AdminEditEventScreen> {
         ? widget.event['date'] as DateTime
         : DateTime.now();
     _selectedTime = TimeOfDay.fromDateTime(_selectedDate);
-    _eventType = widget.event['eventType'] ?? 'Party';
+    _eventType = widget.event['eventType'] ?? WtvaEventTypes.defaultType;
     _neighborhood = widget.event['neighborhood'] ?? 'Downtown';
     _isFeatured = widget.event['isFeatured'] ?? false;
     _status = widget.event['status'] ?? 'active';
@@ -223,14 +224,11 @@ class _AdminEditEventScreenState extends State<AdminEditEventScreen> {
                 labelText: 'Event Type *',
                 prefixIcon: Icon(Icons.category),
               ),
-              items: const [
-                DropdownMenuItem(value: 'Party', child: Text('Party')),
-                DropdownMenuItem(value: 'Concert', child: Text('Concert')),
-                DropdownMenuItem(value: 'DJ Set', child: Text('DJ Set')),
-                DropdownMenuItem(value: 'Live Music', child: Text('Live Music')),
-                DropdownMenuItem(value: 'Comedy', child: Text('Comedy')),
-                DropdownMenuItem(value: 'Other', child: Text('Other')),
-              ],
+              items: WtvaEventTypes.all
+                  .map(
+                    (type) => DropdownMenuItem(value: type, child: Text(type)),
+                  )
+                  .toList(),
               onChanged: (value) {
                 setState(() {
                   _eventType = value;
