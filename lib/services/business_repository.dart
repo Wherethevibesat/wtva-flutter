@@ -58,6 +58,7 @@ class BusinessRepository {
       return BusinessVenueProfile(
         venueName: row['name'] as String? ?? 'Venue',
         address: row['address'] as String? ?? '',
+        neighborhood: row['neighborhood'] as String? ?? '',
         phone: row['phone'] as String? ?? '',
         description: row['description'] as String? ?? '',
         categories: cats is List ? cats.map((e) => e.toString()).toList() : const [],
@@ -83,6 +84,7 @@ class BusinessRepository {
       await client.from('venues').update({
         'name': profile.venueName,
         'address': profile.address,
+        'neighborhood': profile.neighborhood.isEmpty ? null : profile.neighborhood,
         'phone': profile.phone,
         'description': profile.description,
         'categories': profile.categories,
@@ -111,6 +113,7 @@ class BusinessRepository {
         'name': profile.venueName,
         'venue_type': profile.categories.isNotEmpty ? profile.categories.first : 'Bars',
         'address': profile.address,
+        'neighborhood': profile.neighborhood.isEmpty ? null : profile.neighborhood,
         'description': profile.description,
         'phone': profile.phone,
         'categories': profile.categories,

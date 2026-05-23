@@ -93,6 +93,13 @@ class HoustonNeighborhoods {
     'Other',
   ];
 
+  static String slugify(String name) {
+    return name
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'(^-|-$)'), '');
+  }
+
   /// Get neighborhoods grouped by area (optional, for better UX)
   static Map<String, List<String>> get neighborhoodsByArea => {
     'Central Houston': [

@@ -26,6 +26,7 @@ class VenueDetail {
   final int checkInCount;
   final bool isOpen;
   final String hoursLabel;
+  final String? neighborhood;
   final List<String> services;
   final List<VenueCheckInPost> recentCheckIns;
 
@@ -37,6 +38,7 @@ class VenueDetail {
     required this.checkInCount,
     this.isOpen = true,
     this.hoursLabel = 'Open until 2:00 AM',
+    this.neighborhood,
     this.services = const ['Dine-in', 'Takeaway'],
     this.recentCheckIns = const [],
   });

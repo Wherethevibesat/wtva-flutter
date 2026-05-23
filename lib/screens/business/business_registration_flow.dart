@@ -10,6 +10,7 @@ import '../../services/business_verification_service.dart';
 import '../../services/supabase_data.dart';
 import '../../services/user_service.dart';
 import '../../theme/figma_theme.dart';
+import '../../widgets/wtva/neighborhood_dropdown.dart';
 import '../../widgets/wtva/wtva_auth_shell.dart';
 import 'business_shell.dart';
 import 'business_subscription_screen.dart';
@@ -29,6 +30,7 @@ class _BusinessRegistrationFlowState extends State<BusinessRegistrationFlow> {
   final _confirm = TextEditingController();
   final _venue = TextEditingController();
   final _address = TextEditingController();
+  String? _neighborhood;
   final _phone = TextEditingController();
   final _bio = TextEditingController();
   final _categories = <String>{'Bars', 'Night clubs'};
@@ -76,6 +78,7 @@ class _BusinessRegistrationFlowState extends State<BusinessRegistrationFlow> {
     final profile = BusinessVenueProfile(
       venueName: _venue.text.trim().isEmpty ? 'My Venue' : _venue.text.trim(),
       address: _address.text.trim(),
+      neighborhood: _neighborhood ?? '',
       phone: _phone.text.trim(),
       description: _bio.text.trim(),
       categories: _categories.toList(),
@@ -189,7 +192,7 @@ class _BusinessRegistrationFlowState extends State<BusinessRegistrationFlow> {
       case 1:
         return _password.text.length >= 6 && _password.text == _confirm.text;
       case 2:
-        return _venue.text.trim().isNotEmpty;
+        return _venue.text.trim().isNotEmpty && (_neighborhood?.isNotEmpty ?? false);
       case 3:
         return _verificationFile != null && !_uploadingDoc;
       case 4:
@@ -304,6 +307,11 @@ class _BusinessRegistrationFlowState extends State<BusinessRegistrationFlow> {
       case 2:
         return [
           TextField(controller: _venue, decoration: const InputDecoration(hintText: 'Venue name'), onChanged: (_) => setState(() {})),
+          const SizedBox(height: 16),
+          NeighborhoodDropdown(
+            value: _neighborhood,
+            onChanged: (value) => setState(() => _neighborhood = value),
+          ),
           const SizedBox(height: 16),
           TextField(controller: _address, decoration: const InputDecoration(hintText: 'Address'), onChanged: (_) => setState(() {})),
         ];

@@ -92,6 +92,7 @@ class VenueRepository {
           checkInCount: existing.checkInCount,
           isOpen: existing.isOpen,
           hoursLabel: existing.hoursLabel,
+          neighborhood: existing.neighborhood,
           services: existing.services,
           recentCheckIns: entry.value.take(10).toList(),
         ),
@@ -132,6 +133,7 @@ class VenueRepository {
       checkInCount: row['check_in_count'] as int? ?? 0,
       isOpen: row['is_open'] as bool? ?? true,
       hoursLabel: row['hours_label'] as String? ?? 'Open until 2:00 AM',
+      neighborhood: row['neighborhood'] as String?,
       services: services,
     );
   }

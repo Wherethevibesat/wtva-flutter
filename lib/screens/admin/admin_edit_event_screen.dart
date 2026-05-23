@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../data/houston_neighborhoods.dart';
+import '../../widgets/wtva/neighborhood_dropdown.dart';
 
 class AdminEditEventScreen extends StatefulWidget {
   final Map<String, dynamic> event;
@@ -246,28 +246,12 @@ class _AdminEditEventScreenState extends State<AdminEditEventScreen> {
             const SizedBox(height: 16),
 
             // Neighborhood
-            DropdownButtonFormField<String>(
+            NeighborhoodDropdown(
               value: _neighborhood,
-              decoration: const InputDecoration(
-                labelText: 'Neighborhood *',
-                prefixIcon: Icon(Icons.location_city),
-              ),
-              items: HoustonNeighborhoods.neighborhoods.map((neighborhood) {
-                return DropdownMenuItem(
-                  value: neighborhood,
-                  child: Text(neighborhood),
-                );
-              }).toList(),
               onChanged: (value) {
                 setState(() {
                   _neighborhood = value;
                 });
-              },
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please select a neighborhood';
-                }
-                return null;
               },
             ),
             const SizedBox(height: 16),

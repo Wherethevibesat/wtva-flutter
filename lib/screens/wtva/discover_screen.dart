@@ -9,7 +9,9 @@ import '../../widgets/wtva/wtva_promoted_card.dart';
 import '../../widgets/wtva/wtva_search_bar.dart';
 import '../../widgets/wtva/wtva_venue_card.dart';
 import '../../data/mock_venue_store.dart';
+import '../../services/neighborhoods_repository.dart';
 import 'map_search_screen.dart';
+import 'neighborhood_venues_screen.dart';
 import 'venue_detail_screen.dart';
 import 'search_screen.dart';
 import 'wtva_notifications_screen.dart';
@@ -30,6 +32,13 @@ class DiscoverScreen extends StatefulWidget {
 class _DiscoverScreenState extends State<DiscoverScreen> {
   int _categoryIndex = 0;
   String _city = 'Houston, TX';
+  late Future<List<NeighborhoodRecord>> _neighborhoodsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _neighborhoodsFuture = NeighborhoodsRepository.instance.list();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -147,6 +156,57 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                FutureBuilder<List<NeighborhoodRecord>>(
+                  future: _neighborhoodsFuture,
+                  builder: (context, snapshot) {
+                    final rows = snapshot.data ?? const [];
+                    if (rows.isEmpty) return const SizedBox.shrink();
+                    final featured = rows.take(12).toList();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Browse neighborhoods',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 36,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: featured.length,
+                            separatorBuilder: (_, __) => const SizedBox(width: 8),
+                            itemBuilder: (context, i) {
+                              final n = featured[i];
+                              return ActionChip(
+                                label: Text(n.name),
+                                backgroundColor: WtvaColors.dark300,
+                                labelStyle: const TextStyle(
+                                  color: WtvaColors.neutral100,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => NeighborhoodVenuesScreen(
+                                        neighborhoodName: n.name,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    );
+                  },
+                ),
                 WtvaCategoryChips(
                   categories: MockDiscoverData.categories,
                   selectedIndex: _categoryIndex,

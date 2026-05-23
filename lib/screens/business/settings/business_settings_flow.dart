@@ -8,6 +8,7 @@ import '../../../services/user_service.dart';
 import '../../../theme/figma_theme.dart';
 import '../../../utils/wtva_feedback.dart';
 import '../../../widgets/business/business_widgets.dart';
+import '../../../widgets/wtva/neighborhood_dropdown.dart';
 import '../../../widgets/wtva/wtva_gradient_button.dart';
 import '../../wtva/help_support_screen.dart';
 import '../../wtva/settings/extended_settings_screens.dart';
@@ -204,6 +205,7 @@ class BusinessEditProfileScreen extends StatefulWidget {
 class _BusinessEditProfileScreenState extends State<BusinessEditProfileScreen> {
   late final TextEditingController _name;
   late final TextEditingController _address;
+  String? _neighborhood;
   late final TextEditingController _phone;
   late final TextEditingController _bio;
 
@@ -213,6 +215,7 @@ class _BusinessEditProfileScreenState extends State<BusinessEditProfileScreen> {
     final p = BusinessService.instance.profile;
     _name = TextEditingController(text: p.venueName);
     _address = TextEditingController(text: p.address);
+    _neighborhood = p.neighborhood.isEmpty ? null : p.neighborhood;
     _phone = TextEditingController(text: p.phone);
     _bio = TextEditingController(text: p.description);
   }
@@ -239,6 +242,11 @@ class _BusinessEditProfileScreenState extends State<BusinessEditProfileScreen> {
         children: [
           TextField(controller: _name, decoration: const InputDecoration(labelText: 'Venue name')),
           const SizedBox(height: 16),
+          NeighborhoodDropdown(
+            value: _neighborhood,
+            onChanged: (value) => setState(() => _neighborhood = value),
+          ),
+          const SizedBox(height: 16),
           TextField(controller: _address, decoration: const InputDecoration(labelText: 'Address')),
           const SizedBox(height: 16),
           TextField(controller: _phone, decoration: const InputDecoration(labelText: 'Phone')),
@@ -252,6 +260,7 @@ class _BusinessEditProfileScreenState extends State<BusinessEditProfileScreen> {
               BusinessService.instance.updateProfile(BusinessVenueProfile(
                 venueName: _name.text.trim(),
                 address: _address.text.trim(),
+                neighborhood: _neighborhood ?? '',
                 phone: _phone.text.trim(),
                 description: _bio.text.trim(),
                 categories: p.categories,

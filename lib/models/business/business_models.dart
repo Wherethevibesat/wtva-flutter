@@ -149,6 +149,7 @@ class BusinessBrowseFilters {
 class BusinessVenueProfile {
   String venueName;
   String address;
+  String neighborhood;
   String phone;
   String description;
   List<String> categories;
@@ -161,6 +162,7 @@ class BusinessVenueProfile {
   BusinessVenueProfile({
     this.venueName = 'My Venue',
     this.address = '',
+    this.neighborhood = '',
     this.phone = '',
     this.description = '',
     this.categories = const ['Bars', 'Night clubs'],
