@@ -13,6 +13,7 @@ import 'photos_hub_screen.dart';
 import 'wtva_notifications_screen.dart';
 import 'ranking_screen.dart';
 import 'search_screen.dart';
+import 'drivers_browse_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
@@ -47,6 +48,15 @@ class MoreScreen extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 20),
+        _MenuTile(
+          icon: Icons.directions_car_outlined,
+          title: 'Find a driver',
+          subtitle: 'Browse limo & driver listings',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const DriversBrowseScreen()),
+          ),
+        ),
         _MenuTile(
           icon: Icons.search,
           title: 'Search',

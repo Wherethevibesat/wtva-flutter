@@ -25,6 +25,7 @@ import 'city_picker_sheet.dart';
 import '../../utils/account_gate.dart';
 import '../../utils/wtva_feedback.dart';
 import 'go_live_screen.dart';
+import 'drivers_browse_screen.dart';
 
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key});
@@ -191,6 +192,22 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DriversBrowseScreen()),
+                  ),
+                  icon: const Icon(Icons.directions_car_outlined, size: 18),
+                  label: const Text('Find a driver'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: WtvaColors.neutral100,
+                    side: BorderSide(color: WtvaColors.night200.withValues(alpha: 0.85)),
+                    backgroundColor: WtvaColors.dark400,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 EventTypeChips(
