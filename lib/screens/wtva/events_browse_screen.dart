@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../services/events_repository.dart';
 import '../../services/neighborhoods_repository.dart';
 import '../../theme/figma_theme.dart';
+import '../../widgets/wtva/inline_event_date_picker.dart';
+import 'event_detail_screen.dart';
 import 'events_filters_sheet.dart';
 
 class EventsBrowseScreen extends StatefulWidget {
@@ -9,10 +11,14 @@ class EventsBrowseScreen extends StatefulWidget {
     super.key,
     this.initialEventType,
     this.initialNeighborhood,
+    this.initialDate,
+    this.initialFilters,
   });
 
   final String? initialEventType;
   final String? initialNeighborhood;
+  final String? initialDate;
+  final EventsFilters? initialFilters;
 
   @override
   State<EventsBrowseScreen> createState() => _EventsBrowseScreenState();
@@ -23,16 +29,25 @@ class _EventsBrowseScreenState extends State<EventsBrowseScreen> {
   String? _eventType;
   List<String> _neighborhoods = const [];
   List<int> _daysOfWeek = const [];
+  String? _date;
   late Future<List<WtvaEventRecord>> _eventsFuture;
   late Future<List<NeighborhoodRecord>> _neighborhoodsFuture;
 
   @override
   void initState() {
     super.initState();
-    _eventType = widget.initialEventType;
-    if (widget.initialNeighborhood != null && widget.initialNeighborhood!.isNotEmpty) {
-      _neighborhoods = [widget.initialNeighborhood!];
+    final initial = widget.initialFilters;
+    if (initial != null) {
+      _eventType = initial.eventType;
+      _neighborhoods = List<String>.from(initial.neighborhoods);
+      _daysOfWeek = List<int>.from(initial.daysOfWeek);
+    } else {
+      _eventType = widget.initialEventType;
+      if (widget.initialNeighborhood != null && widget.initialNeighborhood!.isNotEmpty) {
+        _neighborhoods = [widget.initialNeighborhood!];
+      }
     }
+    _date = widget.initialDate;
     _neighborhoodsFuture = NeighborhoodsRepository.instance.list();
     _reloadEvents();
   }
@@ -49,10 +64,14 @@ class _EventsBrowseScreenState extends State<EventsBrowseScreen> {
         daysOfWeek: _daysOfWeek,
       );
 
+  bool get _hasAnyFilter =>
+      _filters.hasSelection || _date != null || _searchController.text.trim().isNotEmpty;
+
   void _reloadEvents() {
     _eventsFuture = EventsRepository.instance.listPublished(
       eventType: _eventType,
       neighborhoods: _neighborhoods,
+      date: _date,
     );
   }
 
@@ -67,6 +86,13 @@ class _EventsBrowseScreenState extends State<EventsBrowseScreen> {
       _eventType = result.eventType;
       _neighborhoods = result.neighborhoods;
       _daysOfWeek = result.daysOfWeek;
+      _reloadEvents();
+    });
+  }
+
+  void _setDate(String? date) {
+    setState(() {
+      _date = date;
       _reloadEvents();
     });
   }
@@ -135,26 +161,38 @@ class _EventsBrowseScreenState extends State<EventsBrowseScreen> {
                   future: _neighborhoodsFuture,
                   builder: (context, snapshot) {
                     final neighborhoods = snapshot.data ?? const [];
-                    return Align(
-                      alignment: Alignment.centerLeft,
-                      child: OutlinedButton.icon(
-                        onPressed: snapshot.connectionState == ConnectionState.waiting
-                            ? null
-                            : () => _openFilters(neighborhoods),
-                        icon: const Icon(Icons.tune, size: 18),
-                        label: Text(_filters.hasSelection ? 'Filters (${_filters.activeCount})' : 'Filters'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: WtvaColors.neutral100,
-                          side: BorderSide(
-                            color: _filters.hasSelection
-                                ? WtvaColors.accentPurple
-                                : WtvaColors.night200.withValues(alpha: 0.85),
-                          ),
-                          backgroundColor: WtvaColors.dark400,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        InlineEventDatePicker(
+                          date: _date,
+                          onChanged: _setDate,
                         ),
-                      ),
+                        OutlinedButton.icon(
+                          onPressed: snapshot.connectionState == ConnectionState.waiting
+                              ? null
+                              : () => _openFilters(neighborhoods),
+                          icon: const Icon(Icons.tune, size: 18),
+                          label: Text(
+                            _filters.hasSelection
+                                ? 'Filters (${_filters.activeCount})'
+                                : 'Filters',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: WtvaColors.neutral100,
+                            side: BorderSide(
+                              color: _filters.hasSelection
+                                  ? WtvaColors.accentPurple
+                                  : WtvaColors.night200.withValues(alpha: 0.85),
+                            ),
+                            backgroundColor: WtvaColors.dark400,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
@@ -175,7 +213,7 @@ class _EventsBrowseScreenState extends State<EventsBrowseScreen> {
                     child: Padding(
                       padding: const EdgeInsets.all(32),
                       child: Text(
-                        _searchController.text.trim().isNotEmpty || _filters.hasSelection
+                        _hasAnyFilter
                             ? 'No upcoming events match these filters.'
                             : 'No upcoming events right now.',
                         textAlign: TextAlign.center,
@@ -215,6 +253,12 @@ class _EventTile extends StatelessWidget {
           '${event.eventType} · $date${event.venueName != null ? ' · ${event.venueName}' : ''}${event.neighborhood != null ? ' · ${event.neighborhood}' : ''}',
           style: const TextStyle(color: WtvaColors.neutral300, fontSize: 12),
         ),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => EventDetailScreen(eventId: event.id)),
+          );
+        },
       ),
     );
   }

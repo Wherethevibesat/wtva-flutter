@@ -5,8 +5,10 @@ import '../../services/business_service.dart';
 import '../../services/user_service.dart';
 import '../../theme/figma_theme.dart';
 import '../../widgets/business/business_widgets.dart';
+import '../../widgets/wtva/wtva_gradient_button.dart';
 import 'analytics/business_analytics_flow.dart';
 import 'bookings/business_bookings_flow.dart';
+import 'events/business_events_flow.dart';
 import 'promotions/business_promotions_flow.dart';
 
 /// #09 Main business dashboard — ads, check-ins, analytics preview.
@@ -60,6 +62,27 @@ class _HomeBody extends StatelessWidget {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 20),
+        WtvaGradientButton(
+          label: 'Add venue event',
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BusinessCreateEventScreen()),
+          ),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BusinessEventsScreen()),
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: WtvaColors.neutral100,
+            minimumSize: const Size(double.infinity, 48),
+            side: const BorderSide(color: WtvaColors.night200),
+          ),
+          child: const Text('Manage events'),
         ),
         const SizedBox(height: 20),
         const BusinessSectionTitle(title: 'Your ads'),

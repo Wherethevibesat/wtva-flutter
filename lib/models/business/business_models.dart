@@ -1,4 +1,9 @@
 /// Business-side domain models (demo / local).
+library;
+
+import 'venue_opening_hours.dart';
+
+export 'venue_opening_hours.dart';
 enum BusinessBookingStatus {
   pending,
   confirmed,
@@ -148,10 +153,18 @@ class BusinessBrowseFilters {
 
 class BusinessVenueProfile {
   String venueName;
+  String venueType;
   String address;
   String neighborhood;
   String phone;
   String description;
+  String? imageUrl;
+  VenueOpeningHours openingHours;
+  String websiteUrl;
+  String instagramUrl;
+  String facebookUrl;
+  String tiktokUrl;
+  String twitterUrl;
   List<String> categories;
   List<String> serviceOptions;
   BusinessSubscriptionTier tier;
@@ -161,17 +174,25 @@ class BusinessVenueProfile {
 
   BusinessVenueProfile({
     this.venueName = 'My Venue',
+    this.venueType = 'Nightclub',
     this.address = '',
     this.neighborhood = '',
     this.phone = '',
     this.description = '',
+    this.imageUrl,
+    VenueOpeningHours? openingHours,
+    this.websiteUrl = '',
+    this.instagramUrl = '',
+    this.facebookUrl = '',
+    this.tiktokUrl = '',
+    this.twitterUrl = '',
     this.categories = const ['Bars', 'Night clubs'],
     this.serviceOptions = const ['VIP tables', 'Bottle service'],
     this.tier = BusinessSubscriptionTier.gold,
     this.verified = false,
     this.verificationDocumentPath,
     this.verificationStatus = 'none',
-  });
+  }) : openingHours = openingHours ?? VenueOpeningHours.defaults();
 }
 
 class BusinessCheckInRecord {

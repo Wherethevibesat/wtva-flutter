@@ -16,6 +16,8 @@ import '../business_login_screen.dart';
 import '../payments/business_payments_flow.dart';
 import '../analytics/business_analytics_flow.dart';
 import '../bookings/business_bookings_flow.dart';
+import '../events/business_events_flow.dart';
+import '../venues/business_venue_form_screen.dart';
 
 /// #03 More menu + account, help, rate, share.
 class BusinessMoreScreen extends StatelessWidget {
@@ -38,14 +40,32 @@ class BusinessMoreScreen extends StatelessWidget {
         const SizedBox(height: 20),
         BusinessMenuTile(
           icon: Icons.storefront_outlined,
-          title: 'Business profile',
-          subtitle: profile.verified ? 'Verified · demo' : 'Complete verification',
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BusinessEditProfileScreen())),
+          title: 'Venue profile',
+          subtitle: profile.verified ? 'Verified' : 'Edit venue details',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BusinessVenueFormScreen()),
+          ),
+        ),
+        BusinessMenuTile(
+          icon: Icons.add_business_outlined,
+          title: 'Add venue',
+          subtitle: 'Image, hours, website & social',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BusinessVenueFormScreen(createMode: true)),
+          ),
         ),
         BusinessMenuTile(
           icon: Icons.insights_outlined,
           title: 'Analytics',
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BusinessAnalyticsScreen())),
+        ),
+        BusinessMenuTile(
+          icon: Icons.event_outlined,
+          title: 'Venue events',
+          subtitle: 'Submit events for customer Discover',
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BusinessEventsScreen())),
         ),
         BusinessMenuTile(
           icon: Icons.event_note_outlined,

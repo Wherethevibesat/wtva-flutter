@@ -113,7 +113,7 @@ class _EventsFiltersSheetState extends State<EventsFiltersSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.75;
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.88;
 
     return SafeArea(
       child: ConstrainedBox(
