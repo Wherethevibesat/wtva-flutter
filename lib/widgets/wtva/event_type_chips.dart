@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/event_types.dart';
 import '../../theme/figma_theme.dart';
+import 'wtva_select_chip.dart';
 
 class EventTypeChips extends StatelessWidget {
   const EventTypeChips({
@@ -58,15 +59,10 @@ class EventTypeChips extends StatelessWidget {
     required bool active,
     required VoidCallback onTap,
   }) {
-    return ActionChip(
-      label: Text(label),
-      backgroundColor: active ? WtvaColors.accentPurple : WtvaColors.dark300,
-      labelStyle: TextStyle(
-        color: active ? Colors.white : WtvaColors.neutral100,
-        fontWeight: FontWeight.w600,
-        fontSize: 12,
-      ),
-      onPressed: onTap,
+    return WtvaSelectChip(
+      label: label,
+      selected: active,
+      onTap: onTap,
     );
   }
 }

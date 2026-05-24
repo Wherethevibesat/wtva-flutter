@@ -1,21 +1,43 @@
-# Discover filter UX — Web implementation guide
+# Discover & Events filter UX — Web implementation guide
 
-**Purpose:** Replicate the mobile Discover header UX on **customer web** (and any other app that shows the main venue feed). Hand this document to Cursor agents or web developers building `app.wherethevibesat.com`.
+**Purpose:** Replicate the mobile **Discover** and **Events** filter UX on **customer web** (`app.wherethevibesat.com`). Hand this document to Cursor agents or web developers; read the Flutter files listed below before coding.
 
-**Mobile source of truth (implemented):**
+**Related:** [WEB_APP_BUILD_INSTRUCTIONS.md](../WEB_APP_BUILD_INSTRUCTIONS.md) §8 (Customer web), §11 (events + neighborhoods schema).
+
+### Table of contents
+
+1. [Problem (Discover)](#1-problem-do-not-replicate-on-web)
+2. [UX principles](#2-ux-principles)
+3. [Discover page (`/discover`)](#3-target-layout-on-discover)
+4. [Discover Browse panel](#4-discover-browse-ui-secondary)
+5. [Routes](#5-routes-and-query-params)
+6. [Events page (`/discover/events`)](#6-events-browse-page-discoverevents) — **includes day-of-week**
+7. [Filter pipeline & API](#7-filter-pipeline--api)
+8. [Chip styling (monochrome theme)](#8-chip-styling-monochrome-theme)
+9. [Web component tree](#9-suggested-web-component-tree-nextjs-example)
+10. [Shared TypeScript](#10-shared-typescript-copy-from-flutter)
+11. [Acceptance criteria](#11-acceptance-criteria)
+12. [Out of scope](#12-out-of-scope-unless-requested)
+13. [Cursor prompt](#13-prompt-snippet-for-cursor--contractors)
+14. [Changelog](#14-changelog)
+
+### Mobile source of truth (implemented)
 
 | Flutter file | Role |
 |--------------|------|
 | `lib/screens/wtva/discover_screen.dart` | Discover page layout |
 | `lib/widgets/wtva/discover_quick_browse.dart` | Events / Areas / Map shortcut row |
-| `lib/screens/wtva/discover_browse_sheet.dart` | Secondary browse (event types + neighborhoods) |
+| `lib/screens/wtva/discover_browse_sheet.dart` | Discover Browse panel (event types + neighborhoods) |
 | `lib/widgets/wtva/wtva_search_bar.dart` | Search field + filter affordance |
 | `lib/widgets/wtva/wtva_category_chips.dart` | Primary venue category filters |
-| `lib/data/mock_discover_data.dart` | Category labels for venue feed |
+| `lib/screens/wtva/events_browse_screen.dart` | Events list + search + Filters button |
+| `lib/screens/wtva/events_filters_sheet.dart` | Events Filters modal (type, day, neighborhood) |
+| `lib/widgets/wtva/wtva_select_chip.dart` | Selectable pill chip (Browse + Filters modals) |
+| `lib/data/mock_discover_data.dart` | Venue category labels |
 | `lib/data/event_types.dart` | Canonical event type list |
+| `lib/data/weekdays.dart` | Day-of-week filter ids + labels |
 | `lib/services/neighborhoods_repository.dart` | Neighborhoods API |
-
-**Related:** [WEB_APP_BUILD_INSTRUCTIONS.md](../WEB_APP_BUILD_INSTRUCTIONS.md) §8 (Customer web), §11 (events + neighborhoods schema).
+| `lib/services/events_repository.dart` | Published events API |
 
 ---
 
@@ -187,7 +209,9 @@ Add to customer web IA (extend [WEB_APP_BUILD_INSTRUCTIONS.md](../WEB_APP_BUILD_
 | `/discover/search` | Full search | `search_screen.dart` |
 | `/discover/map` | Map + venue pins | `map_search_screen.dart` |
 | `/discover/events` | Published events list | `events_browse_screen.dart` |
-| `/discover/events?type=Night+Party` | Events filtered by type | `EventsBrowseScreen(initialEventType: …)` |
+| `/discover/events?type=Night+Party` | Pre-filter by event type | `initialEventType` |
+| `/discover/events?neighborhood=Downtown` | Pre-filter by neighborhood name | `initialNeighborhood` |
+| `/discover/events?day=5` | Pre-filter by weekday (5 = Friday) | `dayOfWeek` — see §6.5 |
 | `/discover/neighborhoods/:slug` | Venues/events in one neighborhood | `neighborhood_venues_screen.dart` |
 
 **City picker:** keep existing pattern (`city_picker_sheet.dart`) — e.g. modal on city label click; Houston default for v1 demo data.
@@ -196,32 +220,203 @@ Add to customer web IA (extend [WEB_APP_BUILD_INSTRUCTIONS.md](../WEB_APP_BUILD_
 
 ## 6. Events browse page (`/discover/events`)
 
-Discover is decluttered; **filtering for events stays on the events page** (acceptable).
+Discover is decluttered; **all structural filters for events live in one Filters modal**, not as multiple chip rows on the page.
 
-That page may still show:
+### 6.1 Layout
 
-- Event type chips (filters list in place)
-- Neighborhood chips (filters list in place)
+```
+┌────────────────────────────────────────┐
+│ ← Events                               │
+├────────────────────────────────────────┤
+│ [🔍 Search events, venues...]          │  ← always visible; live client-side filter
+│ [ ⚙ Filters ]  or  [ ⚙ Filters (3) ]   │  ← opens modal; number = active filter count
+├────────────────────────────────────────┤
+│ (event cards)                          │
+└────────────────────────────────────────┘
+```
 
-That is correct: users who navigated to Events expect filters there. **Do not** duplicate those rows back onto `/discover`.
+### 6.2 Filters modal
 
-Reference: `lib/screens/wtva/events_browse_screen.dart`
+Opened by **Filters** button. Max height ~75vh; scrollable body; sticky **Apply filters** footer.
+
+| Order | Section title | Chips |
+|-------|---------------|-------|
+| 1 | **Event type** | `All types` + each value in `EVENT_TYPES` (§10) |
+| 2 | **Day of week** | `Any day` + `Mon` `Tue` `Wed` `Thu` `Fri` `Sat` `Sun` |
+| 3 | **Neighborhood** | `All areas` + one chip per row from `neighborhoods` API |
+
+**Header:** title `Filters`, text button **Clear all** (resets draft only), close (X).
+
+**Footer:** full-width **Apply filters** — commits draft → closes modal → refetches/re-filters list.
+
+**Draft state:** Changes inside the modal are **not** applied to the list until **Apply filters**. Closing via X or backdrop = discard draft (same as mobile).
+
+**Do not** show inline horizontal chip carousels for type / day / neighborhood on the events page.
+
+Reference: `lib/screens/wtva/events_filters_sheet.dart`
+
+### 6.3 Search behavior (main page)
+
+- Search input stays on the events page (not inside the modal).
+- **Live filter** as the user types (no Apply needed for search).
+- Case-insensitive match if **any** of these fields contains the query substring:
+  - `title`
+  - `event_type`
+  - `venue.name` (joined)
+  - `neighborhood`
+
+Reference: `_applyClientFilters` in `lib/screens/wtva/events_browse_screen.dart`
+
+### 6.4 Filter state model
+
+Mirror Flutter `EventsFilters`:
+
+| Field | Type | Default | Applied where |
+|-------|------|---------|---------------|
+| `eventType` | `string \| null` | `null` (= all types) | **Server** — Supabase `eq('event_type', …)` |
+| `neighborhood` | `string \| null` | `null` (= all areas) | **Server** — Supabase `eq('neighborhood', …)` |
+| `dayOfWeek` | `number \| null` | `null` (= any day) | **Client** — weekday of `starts_at` in user local TZ |
+
+**Active filter count** (shown on button):
+
+```ts
+function activeFilterCount(f: EventsFilters): number {
+  return (f.eventType ? 1 : 0) + (f.neighborhood ? 1 : 0) + (f.dayOfWeek ? 1 : 0);
+}
+```
+
+`hasSelection` = count > 0. Button label: `Filters` or `Filters (${count})`.
+
+### 6.5 Day of week rules
+
+Use the same numbering as JavaScript / Dart **`Date.getDay()` is NOT the same** — use **ISO weekday**:
+
+| Chip label | `dayOfWeek` value | Notes |
+|------------|-------------------|-------|
+| Any day | `null` | no day filter |
+| Mon | `1` | Monday |
+| Tue | `2` | … |
+| Wed | `3` | |
+| Thu | `4` | |
+| Fri | `5` | |
+| Sat | `6` | |
+| Sun | `7` | Sunday |
+
+**JavaScript** (no native ISO weekday on `Date`; use one of):
+
+```ts
+// Option A: Intl
+function isoWeekday(date: Date): number {
+  const day = date.getDay(); // 0=Sun … 6=Sat
+  return day === 0 ? 7 : day;
+}
+
+// Option B: match Flutter WtvaWeekdays ids from §10
+```
+
+**Filter logic** (after events are loaded):
+
+```ts
+function matchesDayOfWeek(startsAt: string | Date, dayOfWeek: number | null): boolean {
+  if (dayOfWeek == null) return true;
+  const d = typeof startsAt === 'string' ? new Date(startsAt) : startsAt;
+  return isoWeekday(d) === dayOfWeek;
+}
+```
+
+Use the **browser/local timezone** when converting `starts_at` from UTC (Supabase stores timestamptz).
+
+**URL param (recommended):** `?day=5` for Friday — sync on Apply so links are shareable.
+
+### 6.6 End-to-end filter pipeline
+
+```mermaid
+flowchart TD
+  A[User opens /discover/events] --> B[Read URL query optional]
+  B --> C[Supabase: published events starts_at >= now]
+  C --> D{eventType set?}
+  D -->|yes| E[eq event_type]
+  D -->|no| F
+  E --> F{neighborhood set?}
+  F -->|yes| G[eq neighborhood]
+  F -->|no| H[Event rows]
+  G --> H
+  H --> I{dayOfWeek set?}
+  I -->|yes| J[Client filter local weekday]
+  I -->|no| K
+  J --> K{search text non-empty?}
+  K -->|yes| L[Client filter title type venue neighborhood]
+  K -->|no| M[Render list]
+  L --> M
+```
+
+### 6.7 Supabase query (server filters)
+
+Align with `lib/services/events_repository.dart`:
+
+```ts
+let query = supabase
+  .from('events')
+  .select('id, title, event_type, neighborhood, starts_at, image_url, venue:venues(name)')
+  .eq('status', 'published')
+  .gte('starts_at', new Date().toISOString());
+
+if (eventType) query = query.eq('event_type', eventType);
+if (neighborhood) query = query.eq('neighborhood', neighborhood);
+
+const { data } = await query.order('starts_at').limit(60);
+```
+
+Then run client steps for `dayOfWeek` and `search` in application code.
+
+### 6.8 URL query params (recommended for web)
+
+Sync when user taps **Apply filters** (and initialize page from URL on load):
+
+| Param | Example | Maps to |
+|-------|---------|---------|
+| `type` | `Night+Party` | `eventType` |
+| `neighborhood` | `Midtown` | `neighborhood` (name, not slug — matches mobile) |
+| `day` | `5` | `dayOfWeek` (1–7) |
+| `q` | `dj` | search text (optional; can stay local-only) |
+
+Example: `/discover/events?type=Night+Party&day=5&neighborhood=Midtown`
+
+Discover Browse panel navigates with `type` only: `/discover/events?type=Day+Party`.
 
 ---
 
-## 7. Data and API
+## 7. Filter pipeline & API
 
-| Data | Source | Notes |
-|------|--------|-------|
-| Venue feed | `venues` (+ distance sort if lat/lng known) | Category chip filters client- or server-side |
-| Neighborhoods | `neighborhoods` | `name`, `slug`, `description`; filter `city` + `is_active` |
-| Event types | **Static enum** | Share with admin: `lib/data/event_types.ts` on web must match `lib/data/event_types.dart` |
-| Events list | `events` where `status = 'published'` | Filter by `event_type`, `neighborhood` query params |
-| Promoted / stories | v1 mock or future tables | Unchanged |
+| Data | Source | Server filter | Client filter |
+|------|--------|---------------|---------------|
+| Venue feed | `venues` | category, distance | — |
+| Neighborhoods | `neighborhoods` (`city`, `is_active`) | — | — |
+| Event types | static `EVENT_TYPES` | `event_type` column | — |
+| Events list | `events` published, future `starts_at` | `event_type`, `neighborhood` | `dayOfWeek`, search `q` |
+| Weekdays | static `WEEKDAYS` | — | `starts_at` weekday |
+| Promoted / stories | mock / v2 | — | — |
 
 ---
 
-## 8. Suggested web component tree (Next.js example)
+## 8. Chip styling (monochrome theme)
+
+WTVA uses a **black & white** theme. Do **not** use a purple selected state on the web unless tokens change.
+
+| State | Background | Text |
+|-------|------------|------|
+| **Selected** | White gradient (`buttonGradient`) + subtle border/shadow | **Black** (`onPrimary` / `#000000`) |
+| **Unselected** | `dark300` `#1C1C1C` | `neutral100` `#F4F4F5` |
+
+**Important:** `accentPurple` in Flutter tokens is aliased to **white** (`#FFFFFF`). Selected chips with white text on white fill are invisible — always use **dark text on light selected chips**.
+
+Use **wrap layout** for filter chips, not horizontal scroll carousels.
+
+Reference: `lib/widgets/wtva/wtva_select_chip.dart`, `lib/widgets/wtva/wtva_category_chips.dart`
+
+---
+
+## 9. Suggested web component tree (Next.js example)
 
 ```
 app/discover/page.tsx
@@ -240,27 +435,129 @@ components/discover/
   useDiscoverBrowse.ts       // open/close, initialSection
 
 app/discover/events/page.tsx
+  EventsSearchBar
+  EventsFiltersButton
+  EventsList
+components/events/
+  EventsFiltersModal.tsx      // draft state + Apply
+  useEventsFilters.ts         // URL sync, activeCount
+  filterEvents.ts             // dayOfWeek + search client filters
+  fetchPublishedEvents.ts     // Supabase query
+
 app/discover/neighborhoods/[slug]/page.tsx
 app/discover/map/page.tsx
 app/discover/search/page.tsx
 ```
 
-Shared types:
+---
+
+## 10. Shared TypeScript (copy from Flutter)
+
+Create `src/lib/constants/event-types.ts`, `weekdays.ts`, and `src/lib/types/events-filters.ts`.
 
 ```ts
-// src/lib/types/event.ts — keep in sync with Flutter WtvaEventTypes.all
+// event-types.ts — sync with lib/data/event_types.dart
 export const EVENT_TYPES = [
   'Day Party',
   'Night Party',
-  // ...
+  'After Hours',
+  'Brunch / Daytime',
+  'Live Music / DJ',
+  'Private Event',
+  'Other',
 ] as const;
 
+export type EventType = (typeof EVENT_TYPES)[number];
+export const DEFAULT_EVENT_TYPE: EventType = 'Night Party';
+```
+
+```ts
+// weekdays.ts — sync with lib/data/weekdays.dart
+export const WEEKDAYS = [
+  { id: 1, label: 'Monday', shortLabel: 'Mon' },
+  { id: 2, label: 'Tuesday', shortLabel: 'Tue' },
+  { id: 3, label: 'Wednesday', shortLabel: 'Wed' },
+  { id: 4, label: 'Thursday', shortLabel: 'Thu' },
+  { id: 5, label: 'Friday', shortLabel: 'Fri' },
+  { id: 6, label: 'Saturday', shortLabel: 'Sat' },
+  { id: 7, label: 'Sunday', shortLabel: 'Sun' },
+] as const;
+
+export type DayOfWeek = (typeof WEEKDAYS)[number]['id'];
+```
+
+```ts
+// events-filters.ts — sync with EventsFilters in events_filters_sheet.dart
+export interface EventsFilters {
+  eventType: string | null;
+  neighborhood: string | null;
+  dayOfWeek: DayOfWeek | null;
+}
+
+export const EMPTY_EVENTS_FILTERS: EventsFilters = {
+  eventType: null,
+  neighborhood: null,
+  dayOfWeek: null,
+};
+
+export function activeFilterCount(f: EventsFilters): number {
+  return (f.eventType ? 1 : 0) + (f.neighborhood ? 1 : 0) + (f.dayOfWeek ? 1 : 0);
+}
+```
+
+```ts
+// filter-events.ts — client-side pass
+import type { EventsFilters } from './events-filters';
+
+export interface EventListItem {
+  title: string;
+  event_type: string;
+  neighborhood: string | null;
+  starts_at: string;
+  venue?: { name: string } | null;
+}
+
+export function isoWeekday(date: Date): number {
+  const day = date.getDay();
+  return day === 0 ? 7 : day;
+}
+
+export function filterEventsClient(
+  events: EventListItem[],
+  filters: EventsFilters,
+  searchQuery: string,
+): EventListItem[] {
+  let list = events;
+
+  if (filters.dayOfWeek != null) {
+    list = list.filter((e) => isoWeekday(new Date(e.starts_at)) === filters.dayOfWeek);
+  }
+
+  const q = searchQuery.trim().toLowerCase();
+  if (!q) return list;
+
+  return list.filter((e) => {
+    const haystack = [
+      e.title,
+      e.event_type,
+      e.neighborhood,
+      e.venue?.name,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(q);
+  });
+}
+```
+
+```ts
 export type DiscoverBrowseSection = 'events' | 'areas';
 ```
 
 ---
 
-## 9. Acceptance criteria
+## 11. Acceptance criteria
 
 Use this checklist for PR review:
 
@@ -277,39 +574,57 @@ Use this checklist for PR review:
 - [ ] Desktop and mobile both work; Browse uses sheet on small screens, dialog (or panel) on large.
 - [ ] Guest users can browse; gated actions still use AccountGate pattern (unchanged).
 
+### Events page (`/discover/events`)
+
+- [ ] Search bar always visible; filters list as user types (no Apply for search).
+- [ ] **Filters** button opens modal; no inline type/day/neighborhood chip rows on the page.
+- [ ] Modal sections in order: Event type → Day of week → Neighborhood.
+- [ ] Draft state until **Apply filters**; **Clear all** resets draft inside modal.
+- [ ] Active filter count on button (`Filters (n)`); each dimension counts once.
+- [ ] `type` + `neighborhood` applied via Supabase query; `day` filtered client-side on local weekday.
+- [ ] Selected chips: white/light background + **black** text (not white-on-white).
+- [ ] URL reflects `type`, `neighborhood`, `day` after Apply (recommended).
+- [ ] Empty state: “No upcoming events match these filters.” when filters/search yield zero rows.
+
 ---
 
-## 10. Out of scope (unless requested)
+## 12. Out of scope (unless requested)
 
-- Applying the same declutter pattern to **business** `/browse` (talent filters use a different product pattern; see `business_browse_flow.dart`).
-- Active filter summary pills (“Night clubs · Midtown”) on Discover.
-- Changing **Events browse** internal filters (that screen keeps in-page chips).
+- Business `/browse` talent filters (`business_browse_flow.dart`) — different product pattern.
+- Active filter summary pills on Discover (“Night clubs · Midtown”).
+- **Weekend** combined chip (Fri+Sat) — only single weekdays for now.
+- Server-side SQL day-of-week filter (client-side is sufficient for v1).
 
 ---
 
-## 11. Prompt snippet for Cursor / contractors
+## 13. Prompt snippet for Cursor / contractors
 
-Copy-paste when starting web work:
+Copy-paste when implementing customer web discover + events:
 
 ```
-Implement Discover filter UX per docs/DISCOVER_FILTER_UX_WEB.md.
+Implement Discover & Events filter UX per docs/DISCOVER_FILTER_UX_WEB.md (full spec).
 
-Read Flutter references first:
-- lib/screens/wtva/discover_screen.dart
-- lib/widgets/wtva/discover_quick_browse.dart
-- lib/screens/wtva/discover_browse_sheet.dart
+DISCOVER (/discover):
+- Read: discover_screen.dart, discover_quick_browse.dart, discover_browse_sheet.dart
+- Search + quick row (Events / Areas / Map) + ONE venue category chip row only
+- Browse panel: event types + neighborhoods (wrap chips), opened from tune icon or Areas tile
 
-On /discover: search bar + quick browse (Events/Areas/Map) + ONE venue category chip row.
-Move event types and neighborhoods into a Browse sheet/dialog opened by filter icon or Areas tile.
-Add routes /discover/events, /discover/neighborhoods/[slug], wire neighborhoods API and EVENT_TYPES enum.
-Do not restore three chip carousels on the discover header.
-Match WEB_APP_BUILD_INSTRUCTIONS design tokens (dark500 background, category chip gradient when selected).
+EVENTS (/discover/events):
+- Read: events_browse_screen.dart, events_filters_sheet.dart, weekdays.dart, event_types.dart
+- Search bar on page (live filter); Filters button opens modal with Event type, Day of week, Neighborhood
+- Apply commits filters; server: type + neighborhood; client: day (ISO weekday 1-7) + search
+- Copy EVENT_TYPES, WEEKDAYS, EventsFilters from doc §10; selected chips = white bg + black text
+
+Routes: /discover/events?type=&neighborhood=&day= ; /discover/neighborhoods/[slug]
+Do NOT restore multiple horizontal chip carousels on Discover or Events list headers.
 ```
 
 ---
 
-## 12. Changelog
+## 14. Changelog
 
 | Date | Change |
 |------|--------|
-| 2026-05-23 | Initial doc — mobile Discover declutter shipped; web parity spec |
+| 2026-05-23 | Initial doc — Discover declutter |
+| 2026-05-23 | Events Filters modal (search + type + neighborhood) |
+| 2026-05-23 | Day of week filter; chip styling note (monochrome); TypeScript §10; filter pipeline §6–7 |

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../data/event_types.dart';
 import '../../services/neighborhoods_repository.dart';
 import '../../theme/figma_theme.dart';
+import '../../widgets/wtva/wtva_select_chip.dart';
 import 'events_browse_screen.dart';
 import 'neighborhood_venues_screen.dart';
 
@@ -228,15 +229,10 @@ class _BrowseChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ActionChip(
-      label: Text(label),
-      backgroundColor: WtvaColors.dark300,
-      labelStyle: const TextStyle(
-        color: WtvaColors.neutral100,
-        fontWeight: FontWeight.w600,
-        fontSize: 12,
-      ),
-      onPressed: onTap,
+    return WtvaSelectChip(
+      label: label,
+      selected: false,
+      onTap: onTap,
     );
   }
 }

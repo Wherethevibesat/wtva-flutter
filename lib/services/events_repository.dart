@@ -30,6 +30,7 @@ class EventsRepository {
   Future<List<WtvaEventRecord>> listPublished({
     String? eventType,
     String? neighborhood,
+    List<String>? neighborhoods,
     int limit = 60,
   }) async {
     if (!AppConfig.useSupabaseData || !SupabaseBootstrap.initialized) {
@@ -37,6 +38,9 @@ class EventsRepository {
     }
     final client = SupabaseBootstrap.client;
     if (client == null) return const [];
+
+    final neighborhoodFilters = neighborhoods ??
+        (neighborhood != null && neighborhood.isNotEmpty ? [neighborhood] : null);
 
     try {
       var query = client
@@ -48,8 +52,12 @@ class EventsRepository {
       if (eventType != null && eventType.isNotEmpty) {
         query = query.eq('event_type', eventType);
       }
-      if (neighborhood != null && neighborhood.isNotEmpty) {
-        query = query.eq('neighborhood', neighborhood);
+      if (neighborhoodFilters != null && neighborhoodFilters.isNotEmpty) {
+        if (neighborhoodFilters.length == 1) {
+          query = query.eq('neighborhood', neighborhoodFilters.first);
+        } else {
+          query = query.inFilter('neighborhood', neighborhoodFilters);
+        }
       }
 
       final rows = await query.order('starts_at').limit(limit);

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/events_repository.dart';
 import '../../services/neighborhoods_repository.dart';
 import '../../theme/figma_theme.dart';
-import '../../widgets/wtva/event_type_chips.dart';
+import 'events_filters_sheet.dart';
 
 class EventsBrowseScreen extends StatefulWidget {
   const EventsBrowseScreen({
@@ -19,8 +19,10 @@ class EventsBrowseScreen extends StatefulWidget {
 }
 
 class _EventsBrowseScreenState extends State<EventsBrowseScreen> {
+  final _searchController = TextEditingController();
   String? _eventType;
-  String? _neighborhood;
+  List<String> _neighborhoods = const [];
+  List<int> _daysOfWeek = const [];
   late Future<List<WtvaEventRecord>> _eventsFuture;
   late Future<List<NeighborhoodRecord>> _neighborhoodsFuture;
 
@@ -28,30 +30,64 @@ class _EventsBrowseScreenState extends State<EventsBrowseScreen> {
   void initState() {
     super.initState();
     _eventType = widget.initialEventType;
-    _neighborhood = widget.initialNeighborhood;
+    if (widget.initialNeighborhood != null && widget.initialNeighborhood!.isNotEmpty) {
+      _neighborhoods = [widget.initialNeighborhood!];
+    }
     _neighborhoodsFuture = NeighborhoodsRepository.instance.list();
     _reloadEvents();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  EventsFilters get _filters => EventsFilters(
+        eventType: _eventType,
+        neighborhoods: _neighborhoods,
+        daysOfWeek: _daysOfWeek,
+      );
+
   void _reloadEvents() {
     _eventsFuture = EventsRepository.instance.listPublished(
       eventType: _eventType,
-      neighborhood: _neighborhood,
+      neighborhoods: _neighborhoods,
     );
   }
 
-  void _setEventType(String? type) {
+  Future<void> _openFilters(List<NeighborhoodRecord> neighborhoods) async {
+    final result = await EventsFiltersSheet.show(
+      context,
+      initial: _filters,
+      neighborhoods: neighborhoods,
+    );
+    if (result == null || !mounted) return;
     setState(() {
-      _eventType = type;
+      _eventType = result.eventType;
+      _neighborhoods = result.neighborhoods;
+      _daysOfWeek = result.daysOfWeek;
       _reloadEvents();
     });
   }
 
-  void _setNeighborhood(String? name) {
-    setState(() {
-      _neighborhood = name;
-      _reloadEvents();
-    });
+  List<WtvaEventRecord> _applyClientFilters(List<WtvaEventRecord> events) {
+    var list = events;
+    if (_daysOfWeek.isNotEmpty) {
+      final selected = _daysOfWeek.toSet();
+      list = list.where((e) => selected.contains(e.startsAt.toLocal().weekday)).toList();
+    }
+    final q = _searchController.text.trim().toLowerCase();
+    if (q.isEmpty) return list;
+    return list.where((e) {
+      final haystack = [
+        e.title,
+        e.eventType,
+        e.venueName,
+        e.neighborhood,
+      ].whereType<String>().join(' ').toLowerCase();
+      return haystack.contains(q);
+    }).toList();
   }
 
   @override
@@ -63,91 +99,99 @@ class _EventsBrowseScreenState extends State<EventsBrowseScreen> {
         foregroundColor: WtvaColors.neutral50,
         title: const Text('Events', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      body: Column(
         children: [
-          EventTypeChips(selected: _eventType, onSelected: _setEventType),
-          const SizedBox(height: 20),
-          FutureBuilder<List<NeighborhoodRecord>>(
-            future: _neighborhoodsFuture,
-            builder: (context, snapshot) {
-              final rows = snapshot.data ?? const [];
-              if (rows.isEmpty) return const SizedBox.shrink();
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Neighborhood',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: WtvaColors.neutral300,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.6,
-                        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _searchController,
+                  onChanged: (_) => setState(() {}),
+                  style: const TextStyle(color: WtvaColors.neutral50),
+                  decoration: InputDecoration(
+                    hintText: 'Search events, venues...',
+                    hintStyle: const TextStyle(color: WtvaColors.neutral300),
+                    prefixIcon: const Icon(Icons.search, color: WtvaColors.neutral300),
+                    filled: true,
+                    fillColor: WtvaColors.dark400,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: WtvaColors.night200.withValues(alpha: 0.85)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: WtvaColors.night200.withValues(alpha: 0.85)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: WtvaColors.accentPurple),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 36,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: rows.length + 1,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, i) {
-                        if (i == 0) {
-                          return ActionChip(
-                            label: const Text('All areas'),
-                            backgroundColor:
-                                _neighborhood == null ? WtvaColors.accentPurple : WtvaColors.dark300,
-                            labelStyle: TextStyle(
-                              color: _neighborhood == null ? Colors.white : WtvaColors.neutral100,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                            onPressed: () => _setNeighborhood(null),
-                          );
-                        }
-                        final n = rows[i - 1];
-                        final active = _neighborhood == n.name;
-                        return ActionChip(
-                          label: Text(n.name),
-                          backgroundColor: active ? WtvaColors.accentPurple : WtvaColors.dark300,
-                          labelStyle: TextStyle(
-                            color: active ? Colors.white : WtvaColors.neutral100,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
+                ),
+                const SizedBox(height: 10),
+                FutureBuilder<List<NeighborhoodRecord>>(
+                  future: _neighborhoodsFuture,
+                  builder: (context, snapshot) {
+                    final neighborhoods = snapshot.data ?? const [];
+                    return Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        onPressed: snapshot.connectionState == ConnectionState.waiting
+                            ? null
+                            : () => _openFilters(neighborhoods),
+                        icon: const Icon(Icons.tune, size: 18),
+                        label: Text(_filters.hasSelection ? 'Filters (${_filters.activeCount})' : 'Filters'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: WtvaColors.neutral100,
+                          side: BorderSide(
+                            color: _filters.hasSelection
+                                ? WtvaColors.accentPurple
+                                : WtvaColors.night200.withValues(alpha: 0.85),
                           ),
-                          onPressed: () => _setNeighborhood(n.name),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              );
-            },
+                          backgroundColor: WtvaColors.dark400,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 24),
-          FutureBuilder<List<WtvaEventRecord>>(
-            future: _eventsFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final events = snapshot.data ?? const [];
-              if (events.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 48),
-                  child: Center(
-                    child: Text(
-                      'No upcoming events match these filters.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: WtvaColors.neutral300),
+          const SizedBox(height: 16),
+          Expanded(
+            child: FutureBuilder<List<WtvaEventRecord>>(
+              future: _eventsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final events = _applyClientFilters(snapshot.data ?? const []);
+                if (events.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Text(
+                        _searchController.text.trim().isNotEmpty || _filters.hasSelection
+                            ? 'No upcoming events match these filters.'
+                            : 'No upcoming events right now.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: WtvaColors.neutral300),
+                      ),
                     ),
-                  ),
+                  );
+                }
+                return ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                  itemCount: events.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, i) => _EventTile(event: events[i]),
                 );
-              }
-              return Column(
-                children: events.map((e) => _EventTile(event: e)).toList(),
-              );
-            },
+              },
+            ),
           ),
         ],
       ),
@@ -165,7 +209,6 @@ class _EventTile extends StatelessWidget {
     final date = MaterialLocalizations.of(context).formatMediumDate(event.startsAt);
     return Card(
       color: WtvaColors.dark400,
-      margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         title: Text(event.title, style: const TextStyle(fontWeight: FontWeight.w700)),
         subtitle: Text(

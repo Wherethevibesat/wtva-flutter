@@ -325,7 +325,8 @@ Map Flutter services to web data layer:
 |---------|-------------|----------------|-------------------|
 | Onboarding | Splash, welcome slides (first visit), terms acceptance | localStorage flag | `welcome_screen.dart`, `wtva_terms_screen.dart` |
 | Discover feed | Categories, promoted card, venue cards, live stories strip | Venues table + mock stories until `stories` table | `discover_screen.dart` |
-| Discover filter UX | **One** venue category chip row; Events/Areas/Map shortcuts; Browse sheet for event types + neighborhoods (not three chip rows on feed) | See **[docs/DISCOVER_FILTER_UX_WEB.md](docs/DISCOVER_FILTER_UX_WEB.md)** | `discover_screen.dart`, `discover_quick_browse.dart`, `discover_browse_sheet.dart` |
+| Discover filter UX | **One** venue category chip row; Events/Areas/Map shortcuts; Browse sheet for event types + neighborhoods (not three chip rows on feed) | **[docs/DISCOVER_FILTER_UX_WEB.md](docs/DISCOVER_FILTER_UX_WEB.md)** §3–5 | `discover_screen.dart`, `discover_quick_browse.dart`, `discover_browse_sheet.dart` |
+| Events filter UX | Search on page; **Filters** modal (event type, day of week, neighborhood); URL `?type=&day=&neighborhood=` | **[docs/DISCOVER_FILTER_UX_WEB.md](docs/DISCOVER_FILTER_UX_WEB.md)** §6–10 | `events_browse_screen.dart`, `events_filters_sheet.dart`, `weekdays.dart` |
 | Search | Text search, filters | Venues query | `search_screen.dart` |
 | Map search | Map pins, neighborhood filter | Venues lat/lng | `map_search_screen.dart`, `city_picker_sheet.dart` |
 | Venue detail | Hero, tabs, recent check-ins, directions, call, check-in CTA | Venues + check_ins | `venue_detail_screen.dart` |
@@ -897,7 +898,7 @@ Use these paths when implementing a web feature—**read the Flutter screen firs
 | `app_shell.dart` | Layout / nav |
 | `discover_screen.dart` | `/discover` |
 | `discover_browse_sheet.dart`, `discover_quick_browse.dart` | Browse sheet + quick row on `/discover` — **[docs/DISCOVER_FILTER_UX_WEB.md](docs/DISCOVER_FILTER_UX_WEB.md)** |
-| `events_browse_screen.dart` | `/discover/events` |
+| `events_browse_screen.dart`, `events_filters_sheet.dart` | `/discover/events` (search bar + Filters modal) |
 | `neighborhood_venues_screen.dart` | `/discover/neighborhoods/:slug` |
 | `search_screen.dart` | `/discover/search` |
 | `map_search_screen.dart` | `/discover/map` |
