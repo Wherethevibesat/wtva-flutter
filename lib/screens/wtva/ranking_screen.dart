@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../models/leaderboard_entry.dart';
 import '../../services/ranking_service.dart';
 import '../../services/user_service.dart';
 import '../../theme/figma_theme.dart';
@@ -185,7 +186,7 @@ class _RankingScreenState extends State<RankingScreen> {
                       ),
                     ),
                   ] else if (_tabIndex == 1)
-                    WtvaLeaderboardPanel.global()
+                    const _GlobalRanksTab()
                   else
                     WtvaLeaderboardPanel.followers(),
                 ]),
@@ -202,6 +203,115 @@ class _RankingScreenState extends State<RankingScreen> {
           RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (m) => '${m[1]},',
         );
+  }
+}
+
+/// Global leaderboard with an all-time / this-week toggle. Weekly data comes
+/// from the server points ledger (via `leaderboard_window`); all-time uses the
+/// existing global panel.
+class _GlobalRanksTab extends StatefulWidget {
+  const _GlobalRanksTab();
+
+  @override
+  State<_GlobalRanksTab> createState() => _GlobalRanksTabState();
+}
+
+class _GlobalRanksTabState extends State<_GlobalRanksTab> {
+  bool _weekly = false;
+  Future<List<LeaderboardEntry>>? _weeklyFuture;
+
+  void _selectWeekly(bool weekly) {
+    setState(() {
+      _weekly = weekly;
+      _weeklyFuture ??= RankingService.instance.weeklyLeaderboard();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _RangeToggle(weekly: _weekly, onSelected: _selectWeekly),
+        const SizedBox(height: 16),
+        if (!_weekly)
+          WtvaLeaderboardPanel.global()
+        else
+          FutureBuilder<List<LeaderboardEntry>>(
+            future: _weeklyFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.only(top: 32),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              final entries = snapshot.data ?? const <LeaderboardEntry>[];
+              if (entries.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.only(top: 24),
+                  child: Text(
+                    'No points earned this week yet. Check in to get on the board!',
+                    style: TextStyle(fontSize: 13, color: WtvaColors.neutral300),
+                  ),
+                );
+              }
+              return WtvaLeaderboardPanel(
+                entries: entries,
+                subtitle: 'Top point earners this week',
+              );
+            },
+          ),
+      ],
+    );
+  }
+}
+
+class _RangeToggle extends StatelessWidget {
+  final bool weekly;
+  final ValueChanged<bool> onSelected;
+
+  const _RangeToggle({required this.weekly, required this.onSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: WtvaColors.dark400,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          _segment('All-time', !weekly, () => onSelected(false)),
+          _segment('This week', weekly, () => onSelected(true)),
+        ],
+      ),
+    );
+  }
+
+  Widget _segment(String label, bool selected, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            gradient: selected ? WtvaColors.buttonGradient : null,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: selected ? WtvaColors.onPrimary : WtvaColors.neutral200,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

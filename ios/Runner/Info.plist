@@ -46,7 +46,9 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Take photos for check-in posts.</string>
+	<string>Take photos for check-in posts and scan venue QR codes.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Confirm you're at the venue when you check in.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Choose photos for check-in posts.</string>
 	<key>NSMicrophoneUsageDescription</key>

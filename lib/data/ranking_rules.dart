@@ -7,12 +7,16 @@ import '../theme/figma_theme.dart';
 /// Point values and rank thresholds — single source of truth.
 abstract final class RankingRules {
   static const int checkInPoints = 25;
+  static const int firstVisitPoints = 50;
+  static const int streakPoints = 10;
   static const int checkInPostPoints = 25;
   static const int hourlyStayPoints = 10;
   static const int businessInvitePoints = 50;
 
   static int pointsFor(PointsReason reason) => switch (reason) {
         PointsReason.checkIn => checkInPoints,
+        PointsReason.firstVisit => firstVisitPoints,
+        PointsReason.streak => streakPoints,
         PointsReason.checkInPost => checkInPostPoints,
         PointsReason.hourlyStay => hourlyStayPoints,
         PointsReason.businessInvite => businessInvitePoints,
@@ -101,9 +105,8 @@ abstract final class RankingRules {
 
   static List<(String label, String value)> infoSheetItems() => [
         (PointsReason.checkIn.label, '+$checkInPoints'),
-        (PointsReason.checkInPost.label, '+$checkInPostPoints'),
-        (PointsReason.hourlyStay.label, '+$hourlyStayPoints'),
-        (PointsReason.businessInvite.label, '+$businessInvitePoints'),
+        (PointsReason.firstVisit.label, '+$firstVisitPoints'),
+        (PointsReason.streak.label, '+$streakPoints'),
         ('${tierForPoints(10000).name} rank unlock', 'Unlock paid invites'),
       ];
 }

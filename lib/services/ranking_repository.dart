@@ -40,6 +40,44 @@ class RankingRepository {
     }
   }
 
+  /// Weekly (or any window) leaderboard from the points ledger via RPC.
+  Future<List<LeaderboardEntry>> fetchLeaderboardWindow({int days = 7, int limit = 50}) async {
+    if (!SupabaseData.syncAuth) return [];
+    final client = SupabaseBootstrap.client;
+    if (client == null) return [];
+    try {
+      final data = await client.rpc('leaderboard_window', params: {
+        'p_days': days,
+        'p_limit': limit,
+      });
+      final rows = (data as List?) ?? [];
+      final userId = UserService().currentUser?.id;
+      final list = <LeaderboardEntry>[];
+      var rank = 1;
+      for (final raw in rows) {
+        final row = (raw as Map).cast<String, dynamic>();
+        final id = '${row['user_id'] ?? ''}';
+        if (id.isEmpty) continue;
+        final points = (row['points'] as num?)?.toInt() ?? 0;
+        list.add(
+          LeaderboardEntry(
+            rank: rank++,
+            id: id,
+            name: row['name'] as String? ?? 'User',
+            avatarUrl: row['profile_image_url'] as String? ??
+                'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&q=80',
+            points: points,
+            tierName: RankingRules.tierForPoints(points).name,
+            isCurrentUser: id == userId,
+          ),
+        );
+      }
+      return list;
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<List<LeaderboardEntry>> fetchGlobalLeaderboard() async {
     if (!SupabaseData.syncAuth) return [];
     final client = SupabaseBootstrap.client;
@@ -55,7 +93,7 @@ class RankingRepository {
       final list = <LeaderboardEntry>[];
       var rank = 1;
       for (final raw in rows) {
-        final row = raw as Map<String, dynamic>;
+        final row = raw;
         final user = row['users'] as Map<String, dynamic>?;
         if (user == null) continue;
         if ((user['role'] as String?) != 'customer') continue;

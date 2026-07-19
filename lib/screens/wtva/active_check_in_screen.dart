@@ -8,6 +8,7 @@ import '../../theme/figma_theme.dart';
 import '../../utils/ranking_award_feedback.dart';
 import '../../utils/wtva_feedback.dart';
 import '../../widgets/wtva/wtva_gradient_button.dart';
+import 'check_in/qr_scan_screen.dart';
 import 'check_in_create_post_screen.dart';
 import 'check_in_share_sheet.dart';
 import 'venue_detail_screen.dart';
@@ -16,11 +17,13 @@ import 'venue_detail_screen.dart';
 class ActiveCheckInScreen extends StatefulWidget {
   final String venueId;
   final bool fromPost;
+  final String? token;
 
   const ActiveCheckInScreen({
     super.key,
     required this.venueId,
     this.fromPost = false,
+    this.token,
   });
 
   @override
@@ -31,28 +34,87 @@ class _ActiveCheckInScreenState extends State<ActiveCheckInScreen> {
   late DateTime _startedAt;
   Timer? _timer;
   Duration _elapsed = Duration.zero;
+  bool _checkedIn = false;
 
   @override
   void initState() {
     super.initState();
     _startedAt = DateTime.now();
     _elapsed = Duration.zero;
-    _bootstrapCheckIn();
+    _bootstrapCheckIn(token: widget.token);
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
   }
 
-  Future<void> _bootstrapCheckIn() async {
-    await CheckInRepository.instance.startCheckIn(venueId: widget.venueId);
-    if (!mounted) return;
+  Future<void> _bootstrapCheckIn({String? token}) async {
     final detail = MockVenueStore.byIdOrThrow(widget.venueId);
-    final awards = await RankingService.instance.beginCheckInSession(
-      venueId: widget.venueId,
-      venueName: detail.venue.name,
-      imageUrl: detail.venue.imageUrl,
-      includePostBonus: widget.fromPost,
-    );
-    if (!mounted) return;
-    showPointsAwards(context, awards);
+    try {
+      final awards = await RankingService.instance.beginCheckInSession(
+        venueId: widget.venueId,
+        venueName: detail.venue.name,
+        imageUrl: detail.venue.imageUrl,
+        includePostBonus: widget.fromPost,
+        token: token,
+      );
+      if (!mounted) return;
+      setState(() => _checkedIn = true);
+      showPointsAwards(context, awards);
+    } catch (e) {
+      if (!mounted) return;
+      await _handleCheckInError(e);
+    }
+  }
+
+  Future<void> _handleCheckInError(Object error) async {
+    final message = _messageFor(error);
+
+    // QR-gated venue: offer to scan the code and retry once.
+    if (message.toLowerCase().contains('qr')) {
+      final scan = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: WtvaColors.dark400,
+          title: const Text('Scan required'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Scan QR'),
+            ),
+          ],
+        ),
+      );
+      if (scan == true && mounted) {
+        final token = await Navigator.push<String>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => QrScanScreen(expectedVenueId: widget.venueId),
+          ),
+        );
+        if (token != null && mounted) {
+          await _bootstrapCheckIn(token: token);
+          return;
+        }
+      }
+    } else {
+      showWtvaSnack(context, message, icon: Icons.error_outline);
+    }
+
+    if (mounted && !_checkedIn) Navigator.pop(context);
+  }
+
+  String _messageFor(Object error) {
+    final raw = error.toString();
+    // PostgrestException.toString() includes the message; strip common noise.
+    final cleaned = raw
+        .replaceAll('PostgrestException(message: ', '')
+        .replaceAll('Exception: ', '');
+    final cut = cleaned.indexOf(', code:');
+    final msg = cut > 0 ? cleaned.substring(0, cut) : cleaned;
+    return msg.replaceAll(RegExp(r'[)]+$'), '').trim();
   }
 
   Future<void> _onTick() async {
@@ -205,7 +267,7 @@ class _ActiveCheckInScreenState extends State<ActiveCheckInScreen> {
                 _ActionTile(
                   icon: Icons.add_photo_alternate_outlined,
                   title: 'Create post',
-                  subtitle: 'Photos, caption & +25 points',
+                  subtitle: 'Share photos & your review',
                   onTap: () {
                     Navigator.push(
                       context,
@@ -242,7 +304,7 @@ class _ActiveCheckInScreenState extends State<ActiveCheckInScreen> {
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Stay checked in to earn bonus points every hour',
+                          'Location confirms you\'re here — check in at more venues to climb the ranks',
                           style: TextStyle(fontSize: 13, color: WtvaColors.neutral200),
                         ),
                       ),

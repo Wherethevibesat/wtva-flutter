@@ -8,6 +8,8 @@ import '../data/ranking_rules.dart';
 import '../models/leaderboard_entry.dart';
 import '../models/points_reason.dart';
 import '../models/rank_tier.dart';
+import '../services/check_in_repository.dart';
+import '../services/location_service.dart';
 import '../services/ranking_repository.dart';
 import '../services/supabase_data.dart';
 import '../services/user_service.dart';
@@ -191,14 +193,20 @@ class RankingService extends ChangeNotifier {
   }
 
   /// Starts or resumes a check-in session and applies one-time bonuses.
+  ///
+  /// For real (Supabase-backed) users this calls the `check_in_venue` RPC, which
+  /// enforces cooldown/geofence/QR and awards points server-side; it rethrows a
+  /// user-facing message when the server rejects the check-in. For demo/guest
+  /// sessions it falls back to local, in-memory point accrual.
   Future<List<PointsAward>> beginCheckInSession({
     required String venueId,
     required String venueName,
     required String imageUrl,
     bool includePostBonus = false,
+    String? caption,
+    String? token,
   }) async {
     await load();
-    final awards = <PointsAward>[];
 
     final sameVenue = _activeSession?.venueId == venueId;
     if (!sameVenue || _activeSession == null) {
@@ -210,9 +218,23 @@ class RankingService extends ChangeNotifier {
         hoursAwarded: 0,
       );
     }
-
     final session = _activeSession!;
 
+    if (_serverAuthoritative) {
+      final awards = await _serverCheckIn(
+        venueId: venueId,
+        venueName: venueName,
+        imageUrl: imageUrl,
+        caption: caption,
+        token: token,
+      );
+      session.checkInAwarded = true;
+      await _persistSession();
+      notifyListeners();
+      return awards;
+    }
+
+    final awards = <PointsAward>[];
     if (!session.checkInAwarded) {
       awards.add(await award(PointsReason.checkIn));
       session.checkInAwarded = true;
@@ -248,9 +270,86 @@ class RankingService extends ChangeNotifier {
     return awards;
   }
 
+  /// Server-authoritative check-in via the `check_in_venue` RPC. Applies the
+  /// server's returned total (never an app-computed absolute) and returns the
+  /// awarded breakdown. Rethrows the RPC's user-facing message on rejection.
+  Future<List<PointsAward>> _serverCheckIn({
+    required String venueId,
+    required String venueName,
+    required String imageUrl,
+    String? caption,
+    String? token,
+  }) async {
+    final userId = _userId;
+    final location = await LocationService.current();
+    final result = await CheckInRepository.instance.checkInViaRpc(
+      venueId: venueId,
+      caption: caption,
+      token: token,
+      location: location,
+    );
+    if (result == null) return [];
+
+    _pendingRankUp = null;
+    if (userId != null) {
+      final beforeRank = RankingRules.tierForPoints(_pointsByUser[userId] ?? 0).name;
+      _pointsByUser[userId] = result.totalPoints;
+      final afterRank = RankingRules.tierForPoints(result.totalPoints).name;
+      if (_rankIndex(afterRank) > _rankIndex(beforeRank)) {
+        _pendingRankUp = afterRank;
+      }
+      await _persistPoints(userId);
+    }
+
+    await _appendHistory(
+      venueId: venueId,
+      venueName: venueName,
+      imageUrl: imageUrl,
+      pointsEarned: result.pointsAwarded,
+      hasPost: caption != null && caption.isNotEmpty,
+    );
+
+    final rankAfter = RankingRules.tierForPoints(result.totalPoints).name;
+    final awards = <PointsAward>[
+      PointsAward(
+        amount: result.basePoints,
+        totalAfter: result.totalPoints,
+        rankAfter: rankAfter,
+        rankUpTo: _pendingRankUp,
+        reason: PointsReason.checkIn,
+      ),
+    ];
+    if (result.firstVisit && result.firstVisitBonus > 0) {
+      awards.add(PointsAward(
+        amount: result.firstVisitBonus,
+        totalAfter: result.totalPoints,
+        rankAfter: rankAfter,
+        reason: PointsReason.firstVisit,
+      ));
+    }
+    if (result.streak && result.streakBonus > 0) {
+      awards.add(PointsAward(
+        amount: result.streakBonus,
+        totalAfter: result.totalPoints,
+        rankAfter: rankAfter,
+        reason: PointsReason.streak,
+      ));
+    }
+    return awards;
+  }
+
+  /// Weekly leaderboard from the server points ledger (empty for demo sessions).
+  Future<List<LeaderboardEntry>> weeklyLeaderboard({int days = 7}) {
+    if (!SupabaseData.syncAuth) return Future.value(const []);
+    return RankingRepository.instance.fetchLeaderboardWindow(days: days);
+  }
+
   /// Awards +10 per newly completed full hour while checked in.
   Future<PointsAward?> awardHourlyIfNeeded(Duration elapsed) async {
     await load();
+    // Hourly-stay points are a demo-only accrual; real users earn only what the
+    // server ledger grants, so skip to avoid totals that reset on next sync.
+    if (_serverAuthoritative) return null;
     final session = _activeSession;
     if (session == null) return null;
 
@@ -274,7 +373,29 @@ class RankingService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<PointsAward> awardBusinessInvite() => award(PointsReason.businessInvite);
+  /// Applies a server-returned absolute total (e.g. after redeeming a reward).
+  Future<void> applyServerTotal(int total) async {
+    await load();
+    final userId = _userId;
+    if (userId == null) return;
+    _pointsByUser[userId] = total;
+    await _persistPoints(userId);
+    notifyListeners();
+  }
+
+  Future<PointsAward> awardBusinessInvite() async {
+    await load();
+    // Demo-only local grant; real users' points come from the server ledger.
+    if (_serverAuthoritative) {
+      return PointsAward(
+        amount: 0,
+        totalAfter: currentPoints,
+        rankAfter: currentRank,
+        reason: PointsReason.businessInvite,
+      );
+    }
+    return award(PointsReason.businessInvite);
+  }
 
   List<LeaderboardEntry> globalLeaderboard() {
     final remote = _remoteGlobalLeaderboard;
@@ -393,13 +514,17 @@ class RankingService extends ChangeNotifier {
     await _persistHistory();
   }
 
+  /// True when a real Supabase session backs this user — the server ledger is
+  /// then the source of truth and the app must not write absolute totals.
+  bool get _serverAuthoritative => CheckInRepository.instance.canSync;
+
   Future<void> _persistPoints(String userId) async {
     final total = _pointsByUser[userId] ?? 0;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('$_pointsKeyPrefix$userId', total);
-    if (SupabaseData.syncAuth && !userId.startsWith('demo-')) {
-      await RankingRepository.instance.upsertPoints(userId, total);
-    }
+    // NOTE: We intentionally do NOT upsert an absolute total to Supabase here.
+    // The server points ledger (check_in_venue / redeem_reward RPCs) is the
+    // source of truth; overwriting total_points from the client corrupts it.
   }
 
   Future<void> _persistHistory() async {

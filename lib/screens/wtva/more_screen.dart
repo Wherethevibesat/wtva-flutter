@@ -12,6 +12,7 @@ import 'wtva_profile_screen.dart';
 import 'photos_hub_screen.dart';
 import 'wtva_notifications_screen.dart';
 import 'ranking_screen.dart';
+import 'rewards_screen.dart';
 import 'search_screen.dart';
 import 'drivers_browse_screen.dart';
 
@@ -48,6 +49,15 @@ class MoreScreen extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 20),
+        _MenuTile(
+          icon: Icons.card_giftcard_outlined,
+          title: 'Rewards',
+          subtitle: 'Spend points on perks & drinks',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const RewardsScreen()),
+          ),
+        ),
         _MenuTile(
           icon: Icons.directions_car_outlined,
           title: 'Find a driver',

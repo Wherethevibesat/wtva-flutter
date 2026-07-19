@@ -6,6 +6,7 @@ import 'wtva_feedback.dart';
 void showPointsAwards(BuildContext context, List<PointsAward> awards) {
   if (awards.isEmpty) return;
   final total = awards.fold<int>(0, (s, a) => s + a.amount);
+  if (total <= 0) return;
   final rankUp = awards.map((a) => a.rankUpTo).whereType<String>().lastOrNull;
   final label = awards.length == 1
       ? '+$total points'
