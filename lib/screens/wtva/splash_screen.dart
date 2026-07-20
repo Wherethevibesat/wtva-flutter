@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../config/app_brand.dart';
 import '../../theme/figma_theme.dart';
 import '../../services/business_service.dart';
 import '../../services/favorites_service.dart';
@@ -7,6 +6,7 @@ import '../../services/ranking_service.dart';
 import '../../services/venue_repository.dart';
 import '../../services/app_mode_service.dart';
 import '../../services/user_service.dart';
+import '../../widgets/wtva/brand_logo.dart';
 import 'app_launcher.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -64,22 +64,15 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              AppBrand.logoMark,
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 3,
-                color: WtvaColors.neutral50,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              AppBrand.name,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: WtvaColors.neutral300,
+            // White logo plate reads cleanly on the dark splash.
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: ColoredBox(
+                color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  child: BrandLogo(height: 64),
+                ),
               ),
             ),
             const SizedBox(height: 48),

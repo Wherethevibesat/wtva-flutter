@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/figma_theme.dart';
+import 'brand_logo.dart';
 import 'wtva_gradient_button.dart';
 
 /// Shared layout for login / registration / forgot-password (Figma auth pattern).
@@ -49,7 +50,20 @@ class WtvaAuthShell extends StatelessWidget {
                         )
                       else
                         const SizedBox(width: 48),
-                      const Spacer(),
+                      const Expanded(
+                        child: Center(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.all(Radius.circular(10)),
+                            child: ColoredBox(
+                              color: Colors.white,
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                child: BrandLogo(height: 32),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                       if (onClose != null)
                         IconButton(
                           onPressed: onClose,

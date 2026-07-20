@@ -3,6 +3,7 @@ import '../config/app_brand.dart';
 import '../models/app_mode.dart';
 import '../services/app_mode_service.dart';
 import '../theme/figma_theme.dart';
+import '../widgets/wtva/brand_logo.dart';
 import '../widgets/wtva/nightlife_video_background.dart';
 import 'business/business_launcher.dart';
 import 'wtva/app_launcher.dart' show CustomerLauncher;
@@ -36,29 +37,17 @@ class ModePickerScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Column(
-                    children: [
-                      Text(
-                        AppBrand.logoMark,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 3,
-                          color: WtvaColors.neutral50,
+                  Center(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: ColoredBox(
+                        color: Colors.white,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          child: BrandLogo(height: 56),
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        AppBrand.name,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: WtvaColors.neutral300,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                   const SizedBox(height: 40),
                   Text(
