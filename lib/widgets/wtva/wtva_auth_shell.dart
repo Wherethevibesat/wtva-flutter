@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../theme/figma_theme.dart';
 import 'brand_logo.dart';
+import 'wtva_brand_backdrop.dart';
 import 'wtva_gradient_button.dart';
 
-/// Shared layout for login / registration / forgot-password (Figma auth pattern).
+/// Shared layout for login / registration / forgot-password.
 class WtvaAuthShell extends StatelessWidget {
   final Widget body;
   final String? bottomButtonLabel;
@@ -32,105 +33,143 @@ class WtvaAuthShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomReserve = bottomButtonLabel == null
+        ? 0.0
+        : (bottomLinkLabel != null ? 140.0 : 108.0);
+
     return Scaffold(
-      backgroundColor: WtvaColors.dark500,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                  child: Row(
-                    children: [
-                      if (showBack)
-                        IconButton(
-                          onPressed: onBack ?? () => Navigator.maybePop(context),
-                          icon: _circleIcon(Icons.arrow_back),
-                        )
-                      else
-                        const SizedBox(width: 48),
-                      const Expanded(
-                        child: Center(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.all(Radius.circular(10)),
-                            child: ColoredBox(
-                              color: Colors.white,
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                child: BrandLogo(height: 32),
+      body: WtvaBrandBackdrop(
+        fadeToLight: true,
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                    child: Row(
+                      children: [
+                        if (showBack)
+                          IconButton(
+                            onPressed: onBack ?? () => Navigator.maybePop(context),
+                            icon: _circleIcon(Icons.arrow_back_rounded, onDark: true),
+                          )
+                        else
+                          const SizedBox(width: 48),
+                        Expanded(
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: WtvaColors.accentPink.withValues(alpha: 0.28),
+                                    blurRadius: 18,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ],
+                              ),
+                              child: const BrandLogo(height: 30),
+                            ),
+                          ),
+                        ),
+                        if (onClose != null)
+                          IconButton(
+                            onPressed: onClose,
+                            icon: _circleIcon(Icons.close_rounded, onDark: true),
+                          )
+                        else
+                          const SizedBox(width: 48),
+                      ],
+                    ),
+                  ),
+                  Expanded(child: body),
+                  SizedBox(height: bottomReserve),
+                ],
+              ),
+              if (bottomButtonLabel != null)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+                    decoration: BoxDecoration(
+                      color: WtvaColors.dark400.withValues(alpha: 0.96),
+                      border: const Border(
+                        top: BorderSide(color: WtvaColors.night200),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF101115).withValues(alpha: 0.06),
+                          blurRadius: 20,
+                          offset: const Offset(0, -4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        WtvaGradientButton(
+                          label: bottomButtonLabel!,
+                          onPressed: onBottomPressed,
+                          enabled: bottomEnabled,
+                          loading: bottomLoading,
+                        ),
+                        if (bottomLinkLabel != null && onBottomLinkPressed != null) ...[
+                          const SizedBox(height: 10),
+                          TextButton(
+                            onPressed: bottomLoading ? null : onBottomLinkPressed,
+                            child: Text(
+                              bottomLinkLabel!,
+                              style: const TextStyle(
+                                color: WtvaColors.neutral200,
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline,
+                                decorationColor: WtvaColors.neutral300,
                               ),
                             ),
                           ),
-                        ),
-                      ),
-                      if (onClose != null)
-                        IconButton(
-                          onPressed: onClose,
-                          icon: _circleIcon(Icons.close),
-                        )
-                      else
-                        const SizedBox(width: 48),
-                    ],
-                  ),
-                ),
-                Expanded(child: body),
-                if (bottomButtonLabel != null) SizedBox(height: bottomLinkLabel != null ? 132 : 100),
-              ],
-            ),
-            if (bottomButtonLabel != null)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                  decoration: BoxDecoration(
-                    color: WtvaColors.dark500.withValues(alpha: 0.92),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      WtvaGradientButton(
-                        label: bottomButtonLabel!,
-                        onPressed: onBottomPressed,
-                        enabled: bottomEnabled,
-                        loading: bottomLoading,
-                      ),
-                      if (bottomLinkLabel != null && onBottomLinkPressed != null) ...[
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: bottomLoading ? null : onBottomLinkPressed,
-                          child: Text(
-                            bottomLinkLabel!,
-                            style: const TextStyle(
-                              color: WtvaColors.neutral200,
-                              fontWeight: FontWeight.w600,
-                              decoration: TextDecoration.underline,
-                              decorationColor: WtvaColors.neutral300,
-                            ),
-                          ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _circleIcon(IconData icon) {
+  Widget _circleIcon(IconData icon, {required bool onDark}) {
     return Container(
       width: 44,
       height: 44,
       decoration: BoxDecoration(
-        color: WtvaColors.night500.withValues(alpha: 0.5),
+        color: onDark ? Colors.white.withValues(alpha: 0.16) : WtvaColors.dark400,
         shape: BoxShape.circle,
+        border: Border.all(
+          color: onDark ? Colors.white.withValues(alpha: 0.35) : WtvaColors.night200,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF101115).withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
-      child: Icon(icon, color: WtvaColors.neutral200, size: 22),
+      child: Icon(
+        icon,
+        color: onDark ? Colors.white : WtvaColors.neutral50,
+        size: 20,
+      ),
     );
   }
 }

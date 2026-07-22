@@ -24,13 +24,7 @@ class WtvaSearchBar extends StatelessWidget {
           color: WtvaColors.dark400,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: WtvaColors.night200.withValues(alpha: 0.9)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.white.withValues(alpha: 0.03),
-              blurRadius: 0,
-              spreadRadius: 0.5,
-            ),
-          ],
+          boxShadow: WtvaColors.cardShadow,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(

@@ -3,6 +3,7 @@ import '../../config/dev_auth_config.dart';
 import '../../models/app_mode.dart';
 import '../../navigation/mode_navigation.dart';
 import '../../services/auth_service.dart';
+import '../../services/push_notification_service.dart';
 import '../../services/user_service.dart';
 import '../../utils/account_gate.dart';
 import '../../theme/figma_theme.dart';
@@ -72,13 +73,16 @@ class _WtvaSettingsScreenState extends State<WtvaSettingsScreen> {
           const _SectionLabel('Notifications'),
           _SwitchTile(
             title: 'Push notifications',
-            subtitle: 'Invites, check-ins, messages',
+            subtitle: 'Alerts from WTVA on this device',
             value: _pushEnabled,
-            onChanged: (v) => setState(() => _pushEnabled = v),
+            onChanged: (v) async {
+              setState(() => _pushEnabled = v);
+              await PushNotificationService.instance.setEnabled(v);
+            },
           ),
           _SwitchTile(
             title: 'Email updates',
-            subtitle: 'Weekly digest & promotions',
+            subtitle: 'Coming soon — not synced yet',
             value: _emailEnabled,
             onChanged: (v) => setState(() => _emailEnabled = v),
           ),
@@ -86,7 +90,7 @@ class _WtvaSettingsScreenState extends State<WtvaSettingsScreen> {
           const _SectionLabel('Privacy'),
           _SwitchTile(
             title: 'Share location',
-            subtitle: 'For nearby venues & check-ins',
+            subtitle: 'Used for nearby venues & check-ins on this device',
             value: _locationEnabled,
             onChanged: (v) => setState(() => _locationEnabled = v),
           ),
@@ -108,7 +112,8 @@ class _WtvaSettingsScreenState extends State<WtvaSettingsScreen> {
           ),
           _SettingsTile(
             icon: Icons.lock_outline,
-            title: 'Change password',
+            title: 'Reset password',
+            subtitle: 'Email a reset link',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const WtvaForgotPasswordScreen()),
@@ -116,16 +121,7 @@ class _WtvaSettingsScreenState extends State<WtvaSettingsScreen> {
           ),
           const SizedBox(height: 20),
           ],
-          const _SectionLabel('Payments & app'),
-          _SettingsTile(
-            icon: Icons.payments_outlined,
-            title: 'Payments',
-            subtitle: 'Payouts and cards',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const WtvaPaymentsScreen()),
-            ),
-          ),
+          const _SectionLabel('App'),
           _SettingsTile(
             icon: Icons.star_outline,
             title: 'Rate the app',
@@ -233,22 +229,23 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
         color: WtvaColors.dark400,
         borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListTile(
-        leading: Icon(icon, color: WtvaColors.neutral200),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: subtitle != null
-            ? Text(subtitle!, style: const TextStyle(fontSize: 12, color: WtvaColors.neutral300))
-            : null,
-        trailing: onTap != null
-            ? const Icon(Icons.chevron_right, color: WtvaColors.neutral300)
-            : null,
-        onTap: onTap,
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          leading: Icon(icon, color: WtvaColors.neutral200),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+          subtitle: subtitle != null
+              ? Text(subtitle!, style: const TextStyle(fontSize: 12, color: WtvaColors.neutral300))
+              : null,
+          trailing: onTap != null
+              ? const Icon(Icons.chevron_right, color: WtvaColors.neutral300)
+              : null,
+          onTap: onTap,
+        ),
       ),
     );
   }
@@ -269,18 +266,20 @@ class _SwitchTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
         color: WtvaColors.dark400,
         borderRadius: BorderRadius.circular(12),
-      ),
-      child: SwitchListTile(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: WtvaColors.neutral300)),
-        value: value,
-        activeThumbColor: WtvaColors.neutral50,
-        onChanged: onChanged,
+        clipBehavior: Clip.antiAlias,
+        child: SwitchListTile(
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+          subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: WtvaColors.neutral300)),
+          value: value,
+          activeThumbColor: WtvaColors.onPrimary,
+          activeTrackColor: WtvaColors.accentPurple,
+          onChanged: onChanged,
+        ),
       ),
     );
   }

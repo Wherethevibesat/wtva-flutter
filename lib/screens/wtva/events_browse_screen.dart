@@ -10,15 +10,21 @@ class EventsBrowseScreen extends StatefulWidget {
   const EventsBrowseScreen({
     super.key,
     this.initialEventType,
+    this.initialQuery,
     this.initialNeighborhood,
     this.initialDate,
     this.initialFilters,
+    this.embedded = false,
   });
 
   final String? initialEventType;
+  final String? initialQuery;
   final String? initialNeighborhood;
   final String? initialDate;
   final EventsFilters? initialFilters;
+
+  /// When true (bottom-nav tab), hide the back button.
+  final bool embedded;
 
   @override
   State<EventsBrowseScreen> createState() => _EventsBrowseScreenState();
@@ -48,6 +54,10 @@ class _EventsBrowseScreenState extends State<EventsBrowseScreen> {
       }
     }
     _date = widget.initialDate;
+    final q = widget.initialQuery?.trim();
+    if (q != null && q.isNotEmpty) {
+      _searchController.text = q;
+    }
     _neighborhoodsFuture = NeighborhoodsRepository.instance.list();
     _reloadEvents();
   }
@@ -123,6 +133,7 @@ class _EventsBrowseScreenState extends State<EventsBrowseScreen> {
       appBar: AppBar(
         backgroundColor: WtvaColors.dark500,
         foregroundColor: WtvaColors.neutral50,
+        automaticallyImplyLeading: !widget.embedded,
         title: const Text('Events', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
       body: Column(

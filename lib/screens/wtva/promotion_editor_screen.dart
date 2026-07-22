@@ -36,16 +36,22 @@ class _PromotionEditorScreenState extends State<PromotionEditorScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          DropdownButtonFormField<String>(
-            initialValue: _venueId ?? MockDiscoverData.venues.first.id,
-            decoration: const InputDecoration(labelText: 'Venue'),
-            dropdownColor: WtvaColors.dark400,
-            items: [
-              for (final v in MockDiscoverData.venues)
-                DropdownMenuItem(value: v.id, child: Text(v.name)),
-            ],
-            onChanged: (v) => setState(() => _venueId = v),
-          ),
+          if (MockDiscoverData.venues.isEmpty)
+            const Text(
+              'No venues loaded yet.',
+              style: TextStyle(color: WtvaColors.neutral300),
+            )
+          else
+            DropdownButtonFormField<String>(
+              initialValue: _venueId ?? MockDiscoverData.venues.first.id,
+              decoration: const InputDecoration(labelText: 'Venue'),
+              dropdownColor: WtvaColors.dark400,
+              items: [
+                for (final v in MockDiscoverData.venues)
+                  DropdownMenuItem(value: v.id, child: Text(v.name)),
+              ],
+              onChanged: (v) => setState(() => _venueId = v),
+            ),
           const SizedBox(height: 16),
           TextField(
             controller: _title,

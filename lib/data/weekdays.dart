@@ -15,6 +15,10 @@ class WtvaWeekdays {
   static String labelFor(int weekday) {
     return all.firstWhere((d) => d.id == weekday, orElse: () => all.first).label;
   }
+
+  static String shortLabelFor(int weekday) {
+    return all.firstWhere((d) => d.id == weekday, orElse: () => all.first).shortLabel;
+  }
 }
 
 class _Day {

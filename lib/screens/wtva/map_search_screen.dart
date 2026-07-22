@@ -10,7 +10,10 @@ import 'venue_detail_screen.dart';
 
 /// Map search with venue pins and list.
 class MapSearchScreen extends StatefulWidget {
-  const MapSearchScreen({super.key});
+  const MapSearchScreen({super.key, this.embedded = false});
+
+  /// When true (bottom-nav tab), hide the back button.
+  final bool embedded;
 
   @override
   State<MapSearchScreen> createState() => _MapSearchScreenState();
@@ -45,14 +48,17 @@ class _MapSearchScreenState extends State<MapSearchScreen> {
         backgroundColor: WtvaColors.dark500,
         foregroundColor: WtvaColors.neutral50,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-          tooltip: 'Back',
-        ),
-        title: const Text(
-          'Map search',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+        automaticallyImplyLeading: !widget.embedded,
+        leading: widget.embedded
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.of(context).pop(),
+                tooltip: 'Back',
+              ),
+        title: Text(
+          widget.embedded ? 'Venues' : 'Map search',
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
         ),
         actions: [
           IconButton(

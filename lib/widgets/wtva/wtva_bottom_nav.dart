@@ -26,7 +26,7 @@ class WtvaBottomNav extends StatelessWidget {
           decoration: BoxDecoration(
             color: WtvaColors.navBlur,
             border: Border(
-              top: BorderSide(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
+              top: const BorderSide(color: WtvaColors.night200, width: 0.5),
             ),
           ),
           child: SafeArea(
@@ -37,27 +37,27 @@ class WtvaBottomNav extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _NavItem(
-                    icon: Icons.explore_outlined,
-                    label: 'Discover',
+                    icon: Icons.nightlife_outlined,
+                    label: 'Tonight',
                     selected: currentIndex == 0,
                     onTap: () => onTap(0),
                   ),
                   _NavItem(
-                    icon: Icons.emoji_events_outlined,
-                    label: 'Ranking',
+                    icon: Icons.event_outlined,
+                    label: 'Events',
                     selected: currentIndex == 1,
                     onTap: () => onTap(1),
                   ),
                   _CheckInFab(onTap: onCheckIn),
                   _NavItem(
                     icon: Icons.chat_bubble_outline,
-                    label: 'Messages',
+                    label: 'Inbox',
                     selected: currentIndex == 3,
                     onTap: () => onTap(3),
                   ),
                   _NavItem(
-                    icon: Icons.grid_view_outlined,
-                    label: 'More',
+                    icon: Icons.storefront_outlined,
+                    label: 'Venues',
                     selected: currentIndex == 4,
                     onTap: () => onTap(4),
                   ),
@@ -86,7 +86,7 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? WtvaColors.neutral50 : WtvaColors.neutral300;
+    final color = selected ? WtvaColors.accentPurple : WtvaColors.neutral300;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -111,7 +111,7 @@ class _NavItem extends StatelessWidget {
                 margin: const EdgeInsets.only(top: 4),
                 width: 4,
                 height: 4,
-                decoration: const BoxDecoration(color: WtvaColors.neutral50, shape: BoxShape.circle),
+                decoration: const BoxDecoration(color: WtvaColors.accentPurple, shape: BoxShape.circle),
               ),
           ],
         ),
@@ -152,7 +152,7 @@ class _CheckInFabState extends State<_CheckInFab> {
             border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
             boxShadow: WtvaColors.buttonShadow,
           ),
-          child: const Icon(Icons.add_location_alt_outlined, color: WtvaColors.onPrimary, size: 26),
+          child: const Icon(Icons.qr_code_scanner_rounded, color: WtvaColors.onPrimary, size: 26),
         ),
       ),
     );

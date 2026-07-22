@@ -273,14 +273,12 @@ class _ProfileTile extends StatelessWidget {
       child: Material(
         color: WtvaColors.dark400,
         borderRadius: BorderRadius.circular(12),
-        child: InkWell(
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          leading: Icon(icon, color: WtvaColors.neutral200),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+          trailing: const Icon(Icons.chevron_right, color: WtvaColors.neutral300),
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: ListTile(
-            leading: Icon(icon, color: WtvaColors.neutral200),
-            title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-            trailing: const Icon(Icons.chevron_right, color: WtvaColors.neutral300),
-          ),
         ),
       ),
     );

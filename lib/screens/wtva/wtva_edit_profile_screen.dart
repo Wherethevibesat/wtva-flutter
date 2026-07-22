@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../config/dev_auth_config.dart';
+import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
 import '../../theme/figma_theme.dart';
 import '../../utils/wtva_feedback.dart';
@@ -14,7 +16,6 @@ class WtvaEditProfileScreen extends StatefulWidget {
 
 class _WtvaEditProfileScreenState extends State<WtvaEditProfileScreen> {
   late final TextEditingController _nameController;
-  late final TextEditingController _bioController;
   bool _saving = false;
   final _picker = ImagePicker();
 
@@ -23,30 +24,52 @@ class _WtvaEditProfileScreenState extends State<WtvaEditProfileScreen> {
     super.initState();
     final user = UserService().currentUser;
     _nameController = TextEditingController(text: user?.name ?? '');
-    _bioController = TextEditingController(text: 'Nightlife explorer · HTX');
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _bioController.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      showWtvaSnack(context, 'Enter a display name');
+      return;
+    }
+
     setState(() => _saving = true);
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    UserService().updateDisplayName(_nameController.text);
-    if (!mounted) return;
-    setState(() => _saving = false);
-    Navigator.pop(context);
-    showWtvaSnack(context, 'Profile updated', icon: Icons.check_circle_outline);
+    try {
+      final user = UserService().currentUser;
+      if (user != null &&
+          !DevAuthConfig.useDummyAuth &&
+          user.id != 'guest' &&
+          !user.id.startsWith('demo-')) {
+        await AuthService().updateUserProfile(userId: user.id, name: name);
+      }
+      UserService().updateDisplayName(name);
+      if (!mounted) return;
+      Navigator.pop(context);
+      showWtvaSnack(context, 'Profile updated', icon: Icons.check_circle_outline);
+    } catch (e) {
+      if (!mounted) return;
+      showWtvaSnack(
+        context,
+        e.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Future<void> _changePhoto() async {
     final file = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (file != null && mounted) {
-      showWtvaSnack(context, 'Profile photo updated (demo)');
+      showWtvaSnack(
+        context,
+        'Photo upload is coming soon — your name still saves.',
+      );
     }
   }
 
@@ -54,6 +77,7 @@ class _WtvaEditProfileScreenState extends State<WtvaEditProfileScreen> {
   Widget build(BuildContext context) {
     final user = UserService().currentUser;
     final email = user?.email ?? '';
+    final avatar = user?.profileImageUrl;
 
     return Scaffold(
       backgroundColor: WtvaColors.dark500,
@@ -70,15 +94,18 @@ class _WtvaEditProfileScreenState extends State<WtvaEditProfileScreen> {
                 CircleAvatar(
                   radius: 48,
                   backgroundColor: WtvaColors.dark300,
-                  child: Text(
-                    (_nameController.text.isNotEmpty ? _nameController.text[0] : '?')
-                        .toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w800,
-                      color: WtvaColors.neutral50,
-                    ),
-                  ),
+                  backgroundImage: avatar != null ? NetworkImage(avatar) : null,
+                  child: avatar == null
+                      ? Text(
+                          (_nameController.text.isNotEmpty ? _nameController.text[0] : '?')
+                              .toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.w800,
+                            color: WtvaColors.neutral50,
+                          ),
+                        )
+                      : null,
                 ),
                 Positioned(
                   right: 0,
@@ -103,6 +130,7 @@ class _WtvaEditProfileScreenState extends State<WtvaEditProfileScreen> {
             controller: _nameController,
             style: const TextStyle(color: WtvaColors.neutral50),
             decoration: const InputDecoration(labelText: 'Display name'),
+            textCapitalization: TextCapitalization.words,
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 16),
@@ -112,17 +140,7 @@ class _WtvaEditProfileScreenState extends State<WtvaEditProfileScreen> {
             style: const TextStyle(color: WtvaColors.neutral300),
             decoration: const InputDecoration(
               labelText: 'Email',
-              helperText: 'Email cannot be changed here',
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _bioController,
-            maxLines: 3,
-            style: const TextStyle(color: WtvaColors.neutral50),
-            decoration: const InputDecoration(
-              labelText: 'Bio',
-              alignLabelWithHint: true,
+              helperText: 'Change email from Settings → Change email',
             ),
           ),
           const SizedBox(height: 32),

@@ -16,20 +16,22 @@ class FollowersScreen extends StatelessWidget {
         backgroundColor: WtvaColors.dark500,
         title: const Text('Followers', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: MockSocialData.followers.length,
-        itemBuilder: (context, i) {
-          final u = MockSocialData.followers[i];
-          return _UserRow(
-            user: u,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => UserProfileScreen(user: u)),
+      body: MockSocialData.followers.isEmpty
+          ? const _EmptySocial(label: 'No followers yet')
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: MockSocialData.followers.length,
+              itemBuilder: (context, i) {
+                final u = MockSocialData.followers[i];
+                return _UserRow(
+                  user: u,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => UserProfileScreen(user: u)),
+                  ),
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 }
@@ -47,20 +49,35 @@ class FollowingScreen extends StatelessWidget {
         backgroundColor: WtvaColors.dark500,
         title: const Text('Following', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: MockSocialData.following.length,
-        itemBuilder: (context, i) {
-          final u = MockSocialData.following[i];
-          return _UserRow(
-            user: u,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => UserProfileScreen(user: u)),
+      body: MockSocialData.following.isEmpty
+          ? const _EmptySocial(label: 'Not following anyone yet')
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: MockSocialData.following.length,
+              itemBuilder: (context, i) {
+                final u = MockSocialData.following[i];
+                return _UserRow(
+                  user: u,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => UserProfileScreen(user: u)),
+                  ),
+                );
+              },
             ),
-          );
-        },
-      ),
+    );
+  }
+}
+
+class _EmptySocial extends StatelessWidget {
+  const _EmptySocial({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(label, style: const TextStyle(color: WtvaColors.neutral300)),
     );
   }
 }
@@ -79,35 +96,16 @@ class _UserRow extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundImage: user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
-                child: user.avatarUrl == null ? Text(user.name[0]) : null,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(user.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                    Text('@${user.username}', style: const TextStyle(fontSize: 12, color: WtvaColors.neutral300)),
-                  ],
-                ),
-              ),
-              if (user.followsYou)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: WtvaColors.accentGreen.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text('Follows you', style: TextStyle(fontSize: 10, color: WtvaColors.accentGreen)),
-                ),
-            ],
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundImage: user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
+            child: user.avatarUrl == null
+                ? Text(user.name.isNotEmpty ? user.name[0] : '?')
+                : null,
           ),
+          title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text('@${user.username}', style: const TextStyle(color: WtvaColors.neutral300)),
+          trailing: const Icon(Icons.chevron_right, color: WtvaColors.neutral300),
         ),
       ),
     );

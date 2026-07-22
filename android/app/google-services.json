@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "14770011676",
+    "project_id": "wtva-315c5",
+    "storage_bucket": "wtva-315c5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:14770011676:android:9015c49f52a78446b8e9d9",
+        "android_client_info": {
+          "package_name": "com.wherethevibesat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBugrCE8Rx_dy-JycNr63gxIEKMGg1VebY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

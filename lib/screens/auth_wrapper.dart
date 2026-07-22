@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/dev_auth_config.dart';
 import '../models/user_role.dart';
 import '../services/auth_service.dart';
+import '../services/push_notification_service.dart';
 import '../services/user_service.dart';
 import '../theme/figma_theme.dart';
 import 'wtva/app_shell.dart';
@@ -31,6 +32,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Future<void> _checkAuthState() async {
     await _userService.initializeUser();
+    if (_userService.isLoggedIn) {
+      await PushNotificationService.instance.syncForSignedInUser();
+    }
     if (mounted) {
       setState(() {
         _isLoading = false;
@@ -43,10 +47,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
     _authService.authStateChanges.listen((AuthState state) async {
       if (state.event == AuthChangeEvent.signedIn) {
         await _userService.initializeUser();
+        await PushNotificationService.instance.syncForSignedInUser();
         if (mounted) {
           setState(() {});
         }
       } else if (state.event == AuthChangeEvent.signedOut) {
+        await PushNotificationService.instance.clearForSignOut();
         _userService.clearUser();
         if (mounted) {
           setState(() {});

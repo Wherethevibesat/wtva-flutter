@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../data/mock_leaderboard_data.dart';
 import '../../models/leaderboard_entry.dart';
 import '../../screens/wtva/profile/user_profile_screen.dart';
 import '../../theme/figma_theme.dart';
+import '../../services/ranking_service.dart';
 import '../../services/user_service.dart';
 import '../../utils/account_gate.dart';
 import '../../utils/wtva_user_helpers.dart';
@@ -21,14 +21,14 @@ class WtvaLeaderboardPanel extends StatelessWidget {
 
   factory WtvaLeaderboardPanel.global() {
     return WtvaLeaderboardPanel(
-      entries: MockLeaderboardData.global,
-      subtitle: 'Top users nationwide by points',
+      entries: RankingService.instance.globalLeaderboard(),
+      subtitle: 'Top users by points',
     );
   }
 
   factory WtvaLeaderboardPanel.followers() {
     return WtvaLeaderboardPanel(
-      entries: MockLeaderboardData.followers,
+      entries: RankingService.instance.followersLeaderboard(),
       subtitle: 'People you follow ranked by points',
       showFollowsYou: true,
     );
@@ -36,9 +36,25 @@ class WtvaLeaderboardPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (entries.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Text(
+          showFollowsYou
+              ? 'Following isn’t live yet — check back soon.'
+              : 'No leaderboard data yet. Check in to earn points and appear here.',
+          style: const TextStyle(fontSize: 13, color: WtvaColors.neutral300, height: 1.4),
+        ),
+      );
+    }
+
     final top3 = entries.where((e) => e.rank <= 3).toList()
       ..sort((a, b) => a.rank.compareTo(b.rank));
-    final rest = entries.where((e) => e.rank > 3).toList();
+    final rest = entries.length > 3
+        ? entries.where((e) => e.rank > 3).toList()
+        : (top3.length < 3 ? entries : const <LeaderboardEntry>[]);
+    final showPodium = top3.length >= 3;
+    final listEntries = showPodium ? rest : entries;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,10 +64,10 @@ class WtvaLeaderboardPanel extends StatelessWidget {
           style: const TextStyle(fontSize: 13, color: WtvaColors.neutral300),
         ),
         const SizedBox(height: 20),
-        if (top3.length >= 3)
+        if (showPodium)
           _Podium(top3: top3, onEntryTap: (e) => _openProfile(context, e)),
-        const SizedBox(height: 24),
-        ...rest.map(
+        if (showPodium) const SizedBox(height: 24),
+        ...listEntries.map(
           (e) => Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: _LeaderboardRow(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../config/app_brand.dart';
 import '../../theme/figma_theme.dart';
 import '../../services/business_service.dart';
 import '../../services/favorites_service.dart';
@@ -7,6 +8,7 @@ import '../../services/venue_repository.dart';
 import '../../services/app_mode_service.dart';
 import '../../services/user_service.dart';
 import '../../widgets/wtva/brand_logo.dart';
+import '../../widgets/wtva/wtva_brand_backdrop.dart';
 import 'app_launcher.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -17,15 +19,15 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  late final AnimationController _spin;
+  late final AnimationController _pulse;
 
   @override
   void initState() {
     super.initState();
-    _spin = AnimationController(
+    _pulse = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
     _bootstrap();
   }
 
@@ -52,43 +54,71 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   void dispose() {
-    _spin.dispose();
+    _pulse.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: WtvaColors.dark500,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // White logo plate reads cleanly on the dark splash.
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: ColoredBox(
-                color: Colors.white,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  child: BrandLogo(height: 64),
+      body: WtvaBrandBackdrop(
+        child: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ScaleTransition(
+                  scale: Tween(begin: 0.96, end: 1.0).animate(
+                    CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(
+                          color: WtvaColors.accentPink.withValues(alpha: 0.35),
+                          blurRadius: 28,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: const BrandLogo(height: 64),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 48),
-            RotationTransition(
-              turns: _spin,
-              child: SizedBox(
-                width: 40,
-                height: 40,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  color: WtvaColors.neutral50,
-                  backgroundColor: WtvaColors.night200,
+                const SizedBox(height: 28),
+                ShaderMask(
+                  blendMode: BlendMode.srcIn,
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [
+                      Color(0xFFE9D5FF),
+                      Color(0xFFF0ABFC),
+                      Color(0xFFF9A8D4),
+                    ],
+                  ).createShader(bounds),
+                  child: Text(
+                    AppBrand.name,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
+                        ),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 36),
+                SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    color: Colors.white.withValues(alpha: 0.95),
+                    backgroundColor: Colors.white.withValues(alpha: 0.22),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

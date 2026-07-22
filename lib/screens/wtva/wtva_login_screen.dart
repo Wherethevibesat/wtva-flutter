@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../config/dev_auth_config.dart';
 import '../../utils/auth_errors.dart';
 import '../../services/auth_service.dart';
+import '../../services/push_notification_service.dart';
 import '../../services/user_service.dart';
 import '../../theme/figma_theme.dart';
 import '../../navigation/mode_navigation.dart';
@@ -102,6 +103,8 @@ class _WtvaLoginScreenState extends State<WtvaLoginScreen> {
       }
 
       if (!mounted) return;
+      await PushNotificationService.instance.syncForSignedInUser();
+      if (!mounted) return;
       setState(() => _isLoading = false);
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const AppShell()),
@@ -121,6 +124,28 @@ class _WtvaLoginScreenState extends State<WtvaLoginScreen> {
     );
   }
 
+  InputDecoration _fieldDecoration(String hint, {Widget? suffix}) {
+    return InputDecoration(
+      hintText: hint,
+      filled: true,
+      fillColor: WtvaColors.dark400,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+      suffixIcon: suffix,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: WtvaColors.night200),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: WtvaColors.night200),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: WtvaColors.accentPurple, width: 1.5),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return WtvaAuthShell(
@@ -134,22 +159,27 @@ class _WtvaLoginScreenState extends State<WtvaLoginScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
           children: [
             Text(
               'Log in',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w800,
-                    fontSize: 28,
+                    fontSize: 32,
+                    letterSpacing: -0.6,
+                    color: WtvaColors.neutral50,
                   ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             Wrap(
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text(
                   "Don't have an account? ",
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: WtvaColors.neutral200,
+                        fontSize: 15,
+                      ),
                 ),
                 GestureDetector(
                   onTap: () => Navigator.push(
@@ -159,9 +189,8 @@ class _WtvaLoginScreenState extends State<WtvaLoginScreen> {
                   child: const Text(
                     'Registration',
                     style: TextStyle(
-                      color: WtvaColors.lavender300,
-                      fontWeight: FontWeight.w600,
-                      decoration: TextDecoration.underline,
+                      color: WtvaColors.accentPurple,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -170,46 +199,67 @@ class _WtvaLoginScreenState extends State<WtvaLoginScreen> {
             if (DevAuthConfig.useDummyAuth) ...[
               const SizedBox(height: 20),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: WtvaColors.accentPurple.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: WtvaColors.accentPurple.withValues(alpha: 0.3)),
+                  gradient: LinearGradient(
+                    colors: [
+                      WtvaColors.accentPurple.withValues(alpha: 0.08),
+                      WtvaColors.accentPink.withValues(alpha: 0.06),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: WtvaColors.accentPurple.withValues(alpha: 0.18),
+                  ),
                 ),
                 child: const Text(
                   'Dev: customer@demo.com — password: password. '
                   'Or register any email with a 6+ character password.',
-                  style: TextStyle(fontSize: 12, color: WtvaColors.neutral200),
+                  style: TextStyle(fontSize: 12, color: WtvaColors.neutral200, height: 1.4),
                   textAlign: TextAlign.center,
                 ),
               ),
             ],
             if (_errorMessage != null) ...[
               const SizedBox(height: 16),
-              Text(_errorMessage!, style: const TextStyle(color: WtvaColors.accentPink)),
+              Text(
+                _errorMessage!,
+                style: const TextStyle(
+                  color: WtvaColors.accentPink,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
-            const SizedBox(height: 28),
+            const SizedBox(height: 32),
             TextFormField(
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
-              style: const TextStyle(color: WtvaColors.neutral50),
-              decoration: const InputDecoration(hintText: 'Email'),
+              style: const TextStyle(
+                color: WtvaColors.neutral50,
+                fontWeight: FontWeight.w600,
+              ),
+              decoration: _fieldDecoration('Email'),
               validator: (v) {
                 if (v == null || v.isEmpty) return 'Enter your email';
                 if (!v.contains('@')) return 'Enter a valid email';
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             TextFormField(
               controller: _passwordController,
               obscureText: _obscurePassword,
-              style: const TextStyle(color: WtvaColors.neutral50),
-              decoration: InputDecoration(
-                hintText: 'Password',
-                suffixIcon: IconButton(
+              style: const TextStyle(
+                color: WtvaColors.neutral50,
+                fontWeight: FontWeight.w600,
+              ),
+              decoration: _fieldDecoration(
+                'Password',
+                suffix: IconButton(
                   icon: Icon(
-                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                    _obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
                     color: WtvaColors.neutral300,
                     size: 20,
                   ),
@@ -222,7 +272,7 @@ class _WtvaLoginScreenState extends State<WtvaLoginScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Align(
               alignment: Alignment.centerRight,
               child: GestureDetector(
@@ -233,9 +283,8 @@ class _WtvaLoginScreenState extends State<WtvaLoginScreen> {
                 child: const Text(
                   'Forgot password?',
                   style: TextStyle(
-                    color: WtvaColors.lavender300,
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
+                    color: WtvaColors.accentPurple,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),

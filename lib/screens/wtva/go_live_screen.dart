@@ -104,8 +104,8 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  WtvaColors.dark500.withValues(alpha: 0.5),
-                  WtvaColors.dark500.withValues(alpha: 0.92),
+                  Colors.black.withValues(alpha: 0.35),
+                  Colors.black.withValues(alpha: 0.55),
                 ],
               ),
             ),

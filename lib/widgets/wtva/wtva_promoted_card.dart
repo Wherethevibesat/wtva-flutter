@@ -16,7 +16,7 @@ class WtvaPromotedCard extends StatelessWidget {
       height: 108,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: WtvaColors.night200),
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
@@ -33,8 +33,8 @@ class WtvaPromotedCard extends StatelessWidget {
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
                 colors: [
-                  WtvaColors.dark500.withValues(alpha: 0.95),
-                  WtvaColors.dark500.withValues(alpha: 0.4),
+                  Colors.black.withValues(alpha: 0.75),
+                  Colors.black.withValues(alpha: 0.25),
                 ],
               ),
             ),
@@ -47,7 +47,7 @@ class WtvaPromotedCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: WtvaColors.neutral50,
+                    gradient: WtvaColors.buttonGradient,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: const Text(
@@ -56,7 +56,7 @@ class WtvaPromotedCard extends StatelessWidget {
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.5,
-                      color: WtvaColors.onPrimary,
+                      color: Colors.white,
                     ),
                   ),
                 ),
@@ -66,16 +66,16 @@ class WtvaPromotedCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: WtvaColors.neutral50,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   offer.venueName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: WtvaColors.neutral200,
+                    color: Colors.white.withValues(alpha: 0.85),
                   ),
                 ),
               ],

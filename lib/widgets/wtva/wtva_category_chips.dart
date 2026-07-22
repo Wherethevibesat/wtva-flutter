@@ -34,9 +34,7 @@ class WtvaCategoryChips extends StatelessWidget {
                 color: selected ? null : WtvaColors.dark400,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: selected
-                      ? Colors.white.withValues(alpha: 0.2)
-                      : WtvaColors.night200.withValues(alpha: 0.85),
+                  color: selected ? Colors.transparent : WtvaColors.night200,
                 ),
                 boxShadow: selected ? WtvaColors.buttonShadow : null,
               ),

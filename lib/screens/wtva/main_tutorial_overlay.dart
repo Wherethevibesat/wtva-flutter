@@ -23,7 +23,7 @@ class _MainTutorialOverlayState extends State<MainTutorialOverlay> {
   int _page = 0;
 
   static const _pages = [
-    ('Discover venues', 'Browse nearby spots, promoted deals, and live stories.'),
+    ('Tonight', 'See what’s buzzing — trending spots, happy hours, and your vibe.'),
     ('Check in & earn', 'Tap the center button to check in and rack up points.'),
     ('Climb the ranks', 'Compete on global and follower leaderboards.'),
   ];

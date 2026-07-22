@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/figma_theme.dart';
 
-/// Selectable pill chip — selected state matches [WtvaCategoryChips] (white fill, dark text).
+/// Selectable pill chip — selected state matches [WtvaCategoryChips] (accent gradient).
 class WtvaSelectChip extends StatelessWidget {
   const WtvaSelectChip({
     super.key,
@@ -27,9 +27,7 @@ class WtvaSelectChip extends StatelessWidget {
           color: selected ? null : WtvaColors.dark300,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected
-                ? Colors.white.withValues(alpha: 0.2)
-                : WtvaColors.night200.withValues(alpha: 0.85),
+            color: selected ? Colors.transparent : WtvaColors.night200,
           ),
           boxShadow: selected ? WtvaColors.buttonShadow : null,
         ),

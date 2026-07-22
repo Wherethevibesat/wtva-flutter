@@ -32,6 +32,8 @@ SocialUser socialUserFromSession() {
     name: user.name,
     username: username.isEmpty ? 'user' : username,
     avatarUrl: user.profileImageUrl,
+    followers: 0,
+    following: 0,
     points: ranking.currentPoints,
     rank: ranking.currentRank,
   );
@@ -58,5 +60,5 @@ ChatThread? chatThreadForUser(String name) {
   for (final t in MockMessagesData.threads) {
     if (t.name == name) return t;
   }
-  return MockMessagesData.threads.isNotEmpty ? MockMessagesData.threads.first : null;
+  return null;
 }

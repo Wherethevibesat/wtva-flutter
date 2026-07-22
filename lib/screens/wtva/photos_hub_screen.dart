@@ -51,29 +51,50 @@ class _PhotosHubScreenState extends State<PhotosHubScreen> {
             ),
           ),
           Expanded(
-            child: _tab == 0
-                ? GridView.builder(
-                    padding: const EdgeInsets.all(12),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                      childAspectRatio: 0.85,
+            child: Builder(
+              builder: (context) {
+                final items = _tab == 0 ? MockPhotosData.items : MockPhotosData.videos;
+                if (items.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _tab == 0 ? Icons.photo_outlined : Icons.videocam_outlined,
+                            size: 40,
+                            color: WtvaColors.neutral300,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _tab == 0 ? 'No photos yet' : 'No videos yet',
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Photos and videos from your check-ins will show up here.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: WtvaColors.neutral300, height: 1.35),
+                          ),
+                        ],
+                      ),
                     ),
-                    itemCount: MockPhotosData.items.length,
-                    itemBuilder: (context, i) => _PhotoCard(item: MockPhotosData.items[i]),
-                  )
-                : GridView.builder(
-                    padding: const EdgeInsets.all(12),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                      childAspectRatio: 0.85,
-                    ),
-                    itemCount: MockPhotosData.videos.length,
-                    itemBuilder: (context, i) => _PhotoCard(item: MockPhotosData.videos[i]),
+                  );
+                }
+                return GridView.builder(
+                  padding: const EdgeInsets.all(12),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                    childAspectRatio: 0.85,
                   ),
+                  itemCount: items.length,
+                  itemBuilder: (context, i) => _PhotoCard(item: items[i]),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -149,7 +170,7 @@ class _PhotoCard extends StatelessWidget {
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    WtvaColors.dark500.withValues(alpha: 0.9),
+                    Colors.black.withValues(alpha: 0.7),
                   ],
                 ),
               ),

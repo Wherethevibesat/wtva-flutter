@@ -1,5 +1,8 @@
+import 'package:intl/intl.dart';
+
 import '../config/app_config.dart';
 import '../config/dev_auth_config.dart';
+import '../data/mock_check_in_history_data.dart';
 import '../models/check_in_result.dart';
 import '../services/location_service.dart';
 import '../services/supabase_bootstrap.dart';
@@ -97,4 +100,46 @@ class CheckInRepository {
   }
 
   void clearLocal() => _activeCheckInId = null;
+
+  /// Real check-in history for the signed-in user (empty when offline/demo).
+  Future<List<CheckInHistoryEntry>> listHistory({int limit = 50}) async {
+    if (!canSync) return const [];
+    final client = SupabaseBootstrap.client;
+    final userId = UserService().currentUser?.id;
+    if (client == null || userId == null) return const [];
+
+    try {
+      final rows = await client
+          .from('check_ins')
+          .select(
+            'id, venue_id, caption, image_url, started_at, created_at, points_awarded, venues(name, image_url)',
+          )
+          .eq('user_id', userId)
+          .order('started_at', ascending: false)
+          .limit(limit);
+
+      return rows.map<CheckInHistoryEntry>((raw) {
+        final row = Map<String, dynamic>.from(raw as Map);
+        final venue = row['venues'] as Map<String, dynamic>?;
+        final startedRaw = row['started_at'] as String? ?? row['created_at'] as String?;
+        final started = startedRaw != null ? DateTime.tryParse(startedRaw)?.toLocal() : null;
+        final caption = (row['caption'] as String?)?.trim();
+        return CheckInHistoryEntry(
+          id: row['id'] as String? ?? '',
+          venueId: row['venue_id'] as String? ?? '',
+          venueName: venue?['name'] as String? ?? 'Venue',
+          imageUrl: (row['image_url'] as String?)?.isNotEmpty == true
+              ? row['image_url'] as String
+              : (venue?['image_url'] as String? ?? ''),
+          dateLabel: started == null
+              ? 'Recently'
+              : DateFormat('EEE, MMM d · h:mm a').format(started),
+          pointsEarned: (row['points_awarded'] as num?)?.toInt() ?? 0,
+          hasPost: caption != null && caption.isNotEmpty,
+        );
+      }).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
 }

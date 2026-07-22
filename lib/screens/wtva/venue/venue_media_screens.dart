@@ -9,36 +9,46 @@ class VenueAllCheckInsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final detail = MockVenueStore.byIdOrThrow(venueId);
+    final posts = detail.recentCheckIns;
     return Scaffold(
       backgroundColor: WtvaColors.dark500,
       appBar: AppBar(
         backgroundColor: WtvaColors.dark500,
-        title: Text('Check-ins · ${detail.venue.name}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+        title: Text(
+          'Check-ins · ${detail.venue.name}',
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+        ),
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: detail.recentCheckIns.length + 2,
-        itemBuilder: (context, i) {
-          final posts = detail.recentCheckIns;
-          final post = posts[i % posts.length];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _CheckInTile(
-              post: post,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => VenuePhotoViewerScreen(
-                    imageUrl: post.imageUrl,
-                    caption: post.caption,
-                    userName: post.userName,
-                  ),
-                ),
+      body: posts.isEmpty
+          ? const Center(
+              child: Text(
+                'No check-ins yet',
+                style: TextStyle(color: WtvaColors.neutral300),
               ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: posts.length,
+              itemBuilder: (context, i) {
+                final post = posts[i];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _CheckInTile(
+                    post: post,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => VenuePhotoViewerScreen(
+                          imageUrl: post.imageUrl,
+                          caption: post.caption,
+                          userName: post.userName,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 }
@@ -51,9 +61,10 @@ class VenueAllPhotosScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final detail = MockVenueStore.byIdOrThrow(venueId);
     final urls = [
-      detail.venue.imageUrl,
-      ...detail.recentCheckIns.map((p) => p.imageUrl),
-      'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&q=80',
+      if (detail.venue.imageUrl.isNotEmpty) detail.venue.imageUrl,
+      ...detail.recentCheckIns
+          .map((p) => p.imageUrl)
+          .where((u) => u.isNotEmpty),
     ];
     return Scaffold(
       backgroundColor: WtvaColors.dark500,
@@ -61,7 +72,14 @@ class VenueAllPhotosScreen extends StatelessWidget {
         backgroundColor: WtvaColors.dark500,
         title: const Text('All photos', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
-      body: GridView.builder(
+      body: urls.isEmpty
+          ? const Center(
+              child: Text(
+                'No photos yet',
+                style: TextStyle(color: WtvaColors.neutral300),
+              ),
+            )
+          : GridView.builder(
         padding: const EdgeInsets.all(12),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,

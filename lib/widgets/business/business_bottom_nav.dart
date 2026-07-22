@@ -24,7 +24,7 @@ class BusinessBottomNav extends StatelessWidget {
           decoration: BoxDecoration(
             color: WtvaColors.navBlur,
             border: Border(
-              top: BorderSide(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
+              top: const BorderSide(color: WtvaColors.night200, width: 0.5),
             ),
           ),
           child: SafeArea(
@@ -80,7 +80,7 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? WtvaColors.neutral50 : WtvaColors.neutral300;
+    final color = selected ? WtvaColors.accentPurple : WtvaColors.neutral300;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),

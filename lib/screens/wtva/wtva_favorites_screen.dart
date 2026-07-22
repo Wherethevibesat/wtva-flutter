@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../data/mock_favorites_data.dart';
+import '../../models/venue.dart';
 import '../../services/favorites_service.dart';
 import '../../theme/figma_theme.dart';
 import '../../widgets/wtva/wtva_empty_state.dart';
@@ -14,13 +14,21 @@ class WtvaFavoritesScreen extends StatefulWidget {
 }
 
 class _WtvaFavoritesScreenState extends State<WtvaFavoritesScreen> {
+  List<Venue> _venues = const [];
   bool _ready = false;
 
   @override
   void initState() {
     super.initState();
-    FavoritesService.instance.load().then((_) {
-      if (mounted) setState(() => _ready = true);
+    _load();
+  }
+
+  Future<void> _load() async {
+    final venues = await FavoritesService.instance.venuesReady();
+    if (!mounted) return;
+    setState(() {
+      _venues = venues;
+      _ready = true;
     });
   }
 
@@ -32,7 +40,6 @@ class _WtvaFavoritesScreenState extends State<WtvaFavoritesScreen> {
         body: Center(child: CircularProgressIndicator(color: WtvaColors.accentPurple)),
       );
     }
-    final venues = MockFavoritesData.venues;
 
     return Scaffold(
       backgroundColor: WtvaColors.dark500,
@@ -40,32 +47,36 @@ class _WtvaFavoritesScreenState extends State<WtvaFavoritesScreen> {
         backgroundColor: WtvaColors.dark500,
         title: const Text('Favorites', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
-      body: venues.isEmpty
+      body: _venues.isEmpty
           ? WtvaEmptyState(
               icon: Icons.favorite_border,
               title: 'No favorites yet',
-              subtitle: 'Save venues you love from Discover or venue pages.',
-              actionLabel: 'Explore venues',
+              subtitle: 'Save venues you love from Venues or venue pages.',
+              actionLabel: 'Back',
               onAction: () => Navigator.pop(context),
             )
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: venues.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, i) {
-                final v = venues[i];
-                return WtvaVenueCard(
-                  venue: v,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => VenueDetailScreen(venueId: v.id),
-                      ),
-                    );
-                  },
-                );
-              },
+          : RefreshIndicator(
+              color: WtvaColors.accentPurple,
+              onRefresh: _load,
+              child: ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: _venues.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, i) {
+                  final v = _venues[i];
+                  return WtvaVenueCard(
+                    venue: v,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => VenueDetailScreen(venueId: v.id),
+                        ),
+                      ).then((_) => _load());
+                    },
+                  );
+                },
+              ),
             ),
     );
   }

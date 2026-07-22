@@ -27,7 +27,7 @@ class WtvaRankProgress extends StatelessWidget {
               Container(
                 height: 12,
                 decoration: BoxDecoration(
-                  color: const Color(0x80161826),
+                  color: WtvaColors.night200,
                   borderRadius: BorderRadius.circular(100),
                 ),
               ),
@@ -50,9 +50,9 @@ class WtvaRankProgress extends StatelessWidget {
                     height: 10,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: reached ? WtvaColors.neutral50 : WtvaColors.neutral200.withValues(alpha: 0.4),
+                      color: reached ? WtvaColors.onPrimary : WtvaColors.dark400,
                       border: Border.all(
-                        color: reached ? WtvaColors.neutral50 : Colors.transparent,
+                        color: reached ? WtvaColors.accentPink : WtvaColors.night200,
                         width: 2,
                       ),
                     ),

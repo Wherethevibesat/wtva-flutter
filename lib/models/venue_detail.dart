@@ -27,8 +27,10 @@ class VenueDetail {
   final bool isOpen;
   final String hoursLabel;
   final String? neighborhood;
+  final String? phone;
   final List<String> services;
   final List<VenueCheckInPost> recentCheckIns;
+  final bool featured;
 
   const VenueDetail({
     required this.venue,
@@ -37,9 +39,11 @@ class VenueDetail {
     required this.description,
     required this.checkInCount,
     this.isOpen = true,
-    this.hoursLabel = 'Open until 2:00 AM',
+    this.hoursLabel = '',
     this.neighborhood,
-    this.services = const ['Dine-in', 'Takeaway'],
+    this.phone,
+    this.services = const [],
     this.recentCheckIns = const [],
+    this.featured = false,
   });
 }

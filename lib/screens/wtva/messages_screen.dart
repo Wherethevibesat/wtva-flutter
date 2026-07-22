@@ -4,8 +4,6 @@ import '../../services/user_service.dart';
 import '../../theme/figma_theme.dart';
 import '../../widgets/wtva/guest_locked_view.dart';
 import 'chat/chat_conversation_screen.dart';
-import '../../utils/wtva_feedback.dart';
-import 'chat/chat_requests_screen.dart';
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
@@ -52,12 +50,6 @@ class _MessagesScreenState extends State<MessagesScreen> with SingleTickerProvid
       appBar: AppBar(
         backgroundColor: WtvaColors.dark500,
         title: const Text('Messages', style: TextStyle(fontWeight: FontWeight.w700)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: () => _showFilterSheet(context),
-          ),
-        ],
         bottom: TabBar(
           controller: _tabs,
           indicatorColor: WtvaColors.accentPurple,
@@ -72,110 +64,71 @@ class _MessagesScreenState extends State<MessagesScreen> with SingleTickerProvid
       body: TabBarView(
         controller: _tabs,
         children: [
-          ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            itemCount: MockMessagesData.threads.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, i) => _ThreadTile(
-              thread: MockMessagesData.threads[i],
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ChatConversationScreen(thread: MockMessagesData.threads[i]),
+          MockMessagesData.threads.isEmpty
+              ? const _EmptyInbox(
+                  icon: Icons.chat_bubble_outline,
+                  title: 'No messages yet',
+                  subtitle: 'When venues or friends message you, they’ll show up here.',
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  itemCount: MockMessagesData.threads.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, i) => _ThreadTile(
+                    thread: MockMessagesData.threads[i],
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            ChatConversationScreen(thread: MockMessagesData.threads[i]),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
-          ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              ListTile(
-                leading: const Icon(Icons.person_add_outlined, color: WtvaColors.lavender300),
-                title: const Text('View all requests'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ChatRequestsScreen()),
-                ),
-              ),
-            ],
+          const _EmptyInbox(
+            icon: Icons.person_add_outlined,
+            title: 'No requests',
+            subtitle: 'Message requests will appear here when available.',
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: WtvaColors.accentPurpleDeep,
-        onPressed: () => _showNewMessageSheet(context),
-        child: const Icon(Icons.edit_outlined),
       ),
     );
   }
 }
 
-void _showFilterSheet(BuildContext context) {
-  showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: WtvaColors.dark400,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    ),
-    builder: (ctx) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('Filter messages', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-          ),
-          for (final label in ['All', 'Unread', 'Venues', 'Friends'])
-            ListTile(
-              title: Text(label),
-              trailing: label == 'All' ? const Icon(Icons.check, color: WtvaColors.accentGreen) : null,
-              onTap: () {
-                Navigator.pop(ctx);
-                showWtvaSnack(context, 'Filter: $label');
-              },
-            ),
-        ],
-      ),
-    ),
-  );
-}
+class _EmptyInbox extends StatelessWidget {
+  const _EmptyInbox({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
 
-void _showNewMessageSheet(BuildContext context) {
-  showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: WtvaColors.dark400,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    ),
-    builder: (ctx) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('New message', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-          ),
-          ...MockMessagesData.threads.map(
-            (t) => ListTile(
-              leading: CircleAvatar(
-                backgroundImage: t.avatarUrl != null ? NetworkImage(t.avatarUrl!) : null,
-                child: t.avatarUrl == null ? const Icon(Icons.person) : null,
-              ),
-              title: Text(t.name),
-              onTap: () {
-                Navigator.pop(ctx);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => ChatConversationScreen(thread: t)),
-                );
-              },
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 40, color: WtvaColors.neutral300),
+            const SizedBox(height: 12),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: WtvaColors.neutral300, height: 1.35),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _ThreadTile extends StatelessWidget {

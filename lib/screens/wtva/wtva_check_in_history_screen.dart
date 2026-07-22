@@ -2,10 +2,26 @@ import 'package:flutter/material.dart';
 import '../../data/mock_check_in_history_data.dart';
 import '../../services/ranking_service.dart';
 import '../../theme/figma_theme.dart';
+import '../../widgets/wtva/wtva_empty_state.dart';
 import 'venue_detail_screen.dart';
 
-class WtvaCheckInHistoryScreen extends StatelessWidget {
+class WtvaCheckInHistoryScreen extends StatefulWidget {
   const WtvaCheckInHistoryScreen({super.key});
+
+  @override
+  State<WtvaCheckInHistoryScreen> createState() => _WtvaCheckInHistoryScreenState();
+}
+
+class _WtvaCheckInHistoryScreenState extends State<WtvaCheckInHistoryScreen> {
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    RankingService.instance.onUserChanged().whenComplete(() {
+      if (mounted) setState(() => _loading = false);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,23 +32,35 @@ class WtvaCheckInHistoryScreen extends StatelessWidget {
         backgroundColor: WtvaColors.dark500,
         title: const Text('Check-in history', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
-      body: ListenableBuilder(
-        listenable: ranking,
-        builder: (context, _) {
-          final entries = ranking.checkInHistory;
-          if (entries.isEmpty) {
-            return const Center(
-              child: Text('No check-ins yet', style: TextStyle(color: WtvaColors.neutral300)),
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: entries.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, i) => _HistoryTile(entry: entries[i]),
-          );
-        },
-      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: WtvaColors.accentPurple))
+          : ListenableBuilder(
+              listenable: ranking,
+              builder: (context, _) {
+                final entries = ranking.checkInHistory;
+                if (entries.isEmpty) {
+                  return WtvaEmptyState(
+                    icon: Icons.history,
+                    title: 'No check-ins yet',
+                    subtitle: 'Check in at venues to start earning points and building history.',
+                    actionLabel: 'Back',
+                    onAction: () => Navigator.pop(context),
+                  );
+                }
+                return RefreshIndicator(
+                  color: WtvaColors.accentPurple,
+                  onRefresh: () async {
+                    await RankingService.instance.onUserChanged();
+                  },
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: entries.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (context, i) => _HistoryTile(entry: entries[i]),
+                  ),
+                );
+              },
+            ),
     );
   }
 }
@@ -50,6 +78,7 @@ class _HistoryTile extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
+          if (entry.venueId.isEmpty) return;
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -63,7 +92,25 @@ class _HistoryTile extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(entry.imageUrl, width: 56, height: 56, fit: BoxFit.cover),
+                child: entry.imageUrl.isEmpty
+                    ? Container(
+                        width: 56,
+                        height: 56,
+                        color: WtvaColors.dark300,
+                        child: const Icon(Icons.storefront_outlined),
+                      )
+                    : Image.network(
+                        entry.imageUrl,
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 56,
+                          height: 56,
+                          color: WtvaColors.dark300,
+                          child: const Icon(Icons.storefront_outlined),
+                        ),
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -86,19 +133,20 @@ class _HistoryTile extends StatelessWidget {
                   ],
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '+${entry.pointsEarned}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: WtvaColors.accentGreen,
+              if (entry.pointsEarned > 0)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '+${entry.pointsEarned}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: WtvaColors.accentGreen,
+                      ),
                     ),
-                  ),
-                  const Text('pts', style: TextStyle(fontSize: 10, color: WtvaColors.neutral300)),
-                ],
-              ),
+                    const Text('pts', style: TextStyle(fontSize: 10, color: WtvaColors.neutral300)),
+                  ],
+                ),
             ],
           ),
         ),

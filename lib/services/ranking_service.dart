@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../data/mock_check_in_history_data.dart';
+import '../data/mock_check_in_history_data.dart'; // CheckInHistoryEntry
 import '../data/ranking_rules.dart';
 import '../models/leaderboard_entry.dart';
 import '../models/points_reason.dart';
@@ -61,25 +61,27 @@ class RankingService extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    var points = prefs.getInt('$_pointsKeyPrefix$userId') ?? _seedPoints(userId);
+    var points = prefs.getInt('$_pointsKeyPrefix$userId') ?? 0;
     if (SupabaseData.syncAuth && userId != 'guest' && !userId.startsWith('demo-')) {
       final remote = await RankingRepository.instance.fetchPoints(userId);
       if (remote != null) points = remote;
     }
     _pointsByUser[userId] = points;
 
-    final historyJson = prefs.getString('$_historyKeyPrefix$userId');
-    if (historyJson != null) {
-      try {
-        final list = jsonDecode(historyJson) as List<dynamic>;
-        _history
-          ..clear()
-          ..addAll(list.map((e) => _historyFromJson(e as Map<String, dynamic>)));
-      } catch (_) {
-        _seedHistory();
-      }
+    _history.clear();
+    if (CheckInRepository.instance.canSync) {
+      final remoteHistory = await CheckInRepository.instance.listHistory();
+      _history.addAll(remoteHistory);
     } else {
-      _seedHistory();
+      final historyJson = prefs.getString('$_historyKeyPrefix$userId');
+      if (historyJson != null) {
+        try {
+          final list = jsonDecode(historyJson) as List<dynamic>;
+          _history.addAll(
+            list.map((e) => _historyFromJson(e as Map<String, dynamic>)),
+          );
+        } catch (_) {}
+      }
     }
 
     final sessionJson = prefs.getString(_sessionKey);
@@ -101,21 +103,11 @@ class RankingService extends ChangeNotifier {
     notifyListeners();
   }
 
-  int _seedPoints(String userId) {
-    if (userId == 'customer-1') return 14972;
-    return 0;
-  }
-
-  void _seedHistory() {
-    if (_history.isNotEmpty) return;
-    _history.addAll(MockCheckInHistoryData.entries);
-  }
-
   int get currentPoints {
     if (UserService().isGuest) return 0;
     final id = _userId;
     if (id == null) return 0;
-    return _pointsByUser[id] ?? _seedPoints(id);
+    return _pointsByUser[id] ?? 0;
   }
 
   String get currentRank {
@@ -167,7 +159,7 @@ class RankingService extends ChangeNotifier {
     }
 
     final beforeRank = RankingRules.tierForPoints(_pointsByUser[userId] ?? 0).name;
-    final total = (_pointsByUser[userId] ?? _seedPoints(userId)) + delta;
+    final total = (_pointsByUser[userId] ?? 0) + delta;
     _pointsByUser[userId] = total;
     final afterRank = RankingRules.tierForPoints(total).name;
 
@@ -401,93 +393,27 @@ class RankingService extends ChangeNotifier {
     final remote = _remoteGlobalLeaderboard;
     if (remote != null && remote.isNotEmpty) return remote;
 
-    if (UserService().isGuest) {
-      const npc = [
-        ('nova_vibes', 'Nova Vibes', 48210),
-        ('dj_kira', 'DJ Kira', 39120),
-        ('miles_out', 'Miles Out', 28450),
-        ('lex_night', 'Lex Night', 14200),
-        ('sasha_go', 'Sasha Go', 12880),
-      ];
-      const avatar =
-          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&q=80';
-      return List.generate(npc.length, (i) {
-        final e = npc[i];
-        return LeaderboardEntry(
-          rank: i + 1,
-          id: e.$1,
-          name: e.$2,
-          avatarUrl: avatar,
-          points: e.$3,
-          tierName: RankingRules.tierForPoints(e.$3).name,
-          isCurrentUser: false,
-        );
-      });
-    }
+    // No NPC filler — show only the signed-in user when the remote board is empty.
+    if (UserService().isGuest) return const [];
 
     final user = UserService().currentUser;
-    final userName = user?.name ?? 'You';
-    final userId = user?.id ?? 'you';
-    final userPoints = currentPoints;
-
-    const npc = [
-      ('nova_vibes', 'Nova Vibes', 48210),
-      ('dj_kira', 'DJ Kira', 39120),
-      ('miles_out', 'Miles Out', 28450),
-      ('lex_night', 'Lex Night', 14200),
-      ('sasha_go', 'Sasha Go', 12880),
-      ('rio_pulse', 'Rio Pulse', 11540),
-      ('cam_hot', 'Cam Hot', 9820),
-      ('tia_live', 'Tia Live', 8640),
-      ('ben_spot', 'Ben Spot', 7200),
+    if (user == null) return const [];
+    final points = currentPoints;
+    return [
+      LeaderboardEntry(
+        rank: 1,
+        id: user.id,
+        name: user.name,
+        avatarUrl: user.profileImageUrl,
+        points: points,
+        tierName: RankingRules.tierForPoints(points).name,
+        isCurrentUser: true,
+      ),
     ];
-
-    const avatar =
-        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&q=80';
-
-    final rows = <({String id, String name, int points, bool isYou})>[
-      ...npc.map((e) => (id: e.$1, name: e.$2, points: e.$3, isYou: false)),
-      (id: userId, name: userName, points: userPoints, isYou: true),
-    ]..sort((a, b) => b.points.compareTo(a.points));
-
-    return List.generate(rows.length, (i) {
-      final r = rows[i];
-      return LeaderboardEntry(
-        rank: i + 1,
-        id: r.id,
-        name: r.isYou ? userName : r.name,
-        avatarUrl: avatar,
-        points: r.points,
-        tierName: RankingRules.tierForPoints(r.points).name,
-        isCurrentUser: r.isYou,
-      );
-    });
   }
 
-  List<LeaderboardEntry> followersLeaderboard() {
-    final global = globalLeaderboard();
-    const followerIds = {'lex_night', 'sasha_go', 'tia_live', 'ben_spot'};
-    const followsYouIds = {'lex_night', 'sasha_go', 'tia_live'};
-
-    final filtered = global
-        .where((e) => followerIds.contains(e.id) || e.isCurrentUser)
-        .toList()
-      ..sort((a, b) => b.points.compareTo(a.points));
-
-    return List.generate(filtered.length, (i) {
-      final e = filtered[i];
-      return LeaderboardEntry(
-        rank: i + 1,
-        id: e.id,
-        name: e.name,
-        avatarUrl: e.avatarUrl,
-        points: e.points,
-        tierName: e.tierName,
-        isCurrentUser: e.isCurrentUser,
-        followsYou: followsYouIds.contains(e.id),
-      );
-    });
-  }
+  /// Followers leaderboard is not wired yet — keep empty until social graph exists.
+  List<LeaderboardEntry> followersLeaderboard() => const [];
 
   Future<void> _appendHistory({
     required String venueId,

@@ -11,10 +11,6 @@ class NearbyVenueCheckIn {
 }
 
 class MockCheckInData {
-  static const nearby = [
-    NearbyVenueCheckIn(id: '3', name: 'The Dream Club', distanceMiles: 0.2),
-    NearbyVenueCheckIn(id: '4', name: 'Dream Land', distanceMiles: 0.3),
-    NearbyVenueCheckIn(id: '1', name: 'Barbarella Pizza', distanceMiles: 0.8),
-    NearbyVenueCheckIn(id: '2', name: "Joe's Strip Bar", distanceMiles: 1.1),
-  ];
+  /// Prefer [nearbyFromStore] — no hardcoded venue IDs.
+  static const List<NearbyVenueCheckIn> nearby = [];
 }

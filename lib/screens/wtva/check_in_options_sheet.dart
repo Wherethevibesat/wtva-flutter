@@ -47,7 +47,7 @@ class CheckInOptionsSheet extends StatelessWidget {
               width: 63,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.8),
+                color: WtvaColors.night200,
                 borderRadius: BorderRadius.circular(100),
               ),
             ),

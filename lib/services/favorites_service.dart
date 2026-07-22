@@ -1,10 +1,11 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../data/mock_discover_data.dart';
+import '../data/mock_venue_store.dart';
 import '../models/venue.dart';
 import 'supabase_bootstrap.dart';
 import 'supabase_data.dart';
 import 'user_service.dart';
+import 'venue_repository.dart';
 
 /// Favorites — local cache with Supabase `user_favorites` sync.
 class FavoritesService {
@@ -39,7 +40,7 @@ class FavoritesService {
     final prefs = await SharedPreferences.getInstance();
     _ids
       ..clear()
-      ..addAll(prefs.getStringList(_key) ?? ['2', '1', '3']);
+      ..addAll(prefs.getStringList(_key) ?? const <String>[]);
     _loaded = true;
   }
 
@@ -51,7 +52,16 @@ class FavoritesService {
   bool isFavorite(String venueId) => _ids.contains(venueId);
 
   List<Venue> get venues {
-    return MockDiscoverData.venues.where((v) => _ids.contains(v.id)).toList();
+    return _ids
+        .map(MockVenueStore.venueById)
+        .whereType<Venue>()
+        .toList();
+  }
+
+  Future<List<Venue>> venuesReady() async {
+    await load();
+    await VenueRepository.instance.hydrate();
+    return venues;
   }
 
   Future<bool> toggle(String venueId) async {

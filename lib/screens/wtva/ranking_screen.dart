@@ -44,7 +44,13 @@ class _RankingScreenState extends State<RankingScreen> {
     final milestones = _ranking.progressMilestones;
     final tiers = _ranking.tiers;
 
-    return ListenableBuilder(
+    return Scaffold(
+      backgroundColor: WtvaColors.dark500,
+      appBar: AppBar(
+        backgroundColor: WtvaColors.dark500,
+        title: const Text('Rankings', style: TextStyle(fontWeight: FontWeight.w700)),
+      ),
+      body: ListenableBuilder(
       listenable: _ranking,
       builder: (context, _) {
         return CustomScrollView(
@@ -52,17 +58,10 @@ class _RankingScreenState extends State<RankingScreen> {
             SliverToBoxAdapter(
               child: Container(
                 decoration: const BoxDecoration(color: WtvaColors.headerBlur),
-                padding: const EdgeInsets.fromLTRB(24, 56, 24, 16),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Rankings',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 28,
-                          ),
-                    ),
                     if (isGuest) ...[
                       const SizedBox(height: 12),
                       Material(
@@ -195,6 +194,7 @@ class _RankingScreenState extends State<RankingScreen> {
           ],
         );
       },
+      ),
     );
   }
 

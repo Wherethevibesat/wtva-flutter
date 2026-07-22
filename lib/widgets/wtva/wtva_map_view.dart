@@ -13,7 +13,7 @@ class MapVenuePin {
   const MapVenuePin({required this.venue, required this.position});
 }
 
-/// Map with venue pins. Uses Carto dark tiles (reliable; matches app theme).
+/// Map with venue pins. Uses Carto light tiles (matches app light theme).
 class WtvaMapView extends StatelessWidget {
   final List<MapVenuePin> pins;
   final LatLng center;
@@ -49,7 +49,7 @@ class WtvaMapView extends StatelessWidget {
           children: [
             TileLayer(
               urlTemplate:
-                  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                  'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
               subdomains: const ['a', 'b', 'c', 'd'],
               userAgentPackageName: 'com.wherethevibesat',
             ),

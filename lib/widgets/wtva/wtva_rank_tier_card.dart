@@ -11,6 +11,10 @@ class WtvaRankTierCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final useGradientCard = tier.cardGradient != null;
+    final ink = useGradientCard ? WtvaColors.onPrimary : WtvaColors.neutral50;
+    final muted = useGradientCard
+        ? WtvaColors.onPrimary.withValues(alpha: 0.85)
+        : WtvaColors.neutral100;
 
     return Container(
       width: double.infinity,
@@ -19,6 +23,9 @@ class WtvaRankTierCard extends StatelessWidget {
         gradient: tier.cardGradient,
         color: useGradientCard ? null : WtvaColors.cardElevated,
         borderRadius: BorderRadius.circular(12),
+        border: useGradientCard
+            ? null
+            : Border.all(color: WtvaColors.night200.withValues(alpha: 0.8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -31,11 +38,19 @@ class WtvaRankTierCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: tier.iconGradient,
                   color: tier.iconGradient == null
-                      ? Colors.white.withValues(alpha: 0.24)
+                      ? (useGradientCard
+                          ? Colors.white.withValues(alpha: 0.22)
+                          : WtvaColors.accentPurple.withValues(alpha: 0.12))
                       : null,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(tier.icon, color: Colors.white, size: 22),
+                child: Icon(
+                  tier.icon,
+                  color: useGradientCard || tier.iconGradient != null
+                      ? WtvaColors.onPrimary
+                      : WtvaColors.accentPurple,
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -43,20 +58,20 @@ class WtvaRankTierCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (isCurrent)
-                      const Text(
+                      Text(
                         'MY RANK',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: WtvaColors.neutral100,
+                          color: muted,
                         ),
                       ),
                     Text(
                       tier.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w600,
-                        color: WtvaColors.neutral50,
+                        color: ink,
                       ),
                     ),
                   ],
@@ -67,18 +82,18 @@ class WtvaRankTierCard extends StatelessWidget {
                 children: [
                   Text(
                     _formatPoints(tier.pointsRequired),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
-                      color: WtvaColors.neutral50,
+                      color: ink,
                     ),
                   ),
-                  const Text(
+                  Text(
                     'POINTS',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: WtvaColors.neutral100,
+                      color: muted,
                     ),
                   ),
                 ],
@@ -88,22 +103,23 @@ class WtvaRankTierCard extends StatelessWidget {
           const SizedBox(height: 12),
           RichText(
             text: TextSpan(
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 height: 1.35,
-                color: WtvaColors.neutral50,
+                color: ink,
               ),
               children: [
                 TextSpan(
                   text: tier.description,
                   style: TextStyle(
                     fontWeight: tier.payRate != null ? FontWeight.w400 : FontWeight.w600,
+                    color: muted,
                   ),
                 ),
                 if (tier.payRate != null)
                   TextSpan(
                     text: tier.payRate,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    style: TextStyle(fontWeight: FontWeight.w700, color: ink),
                   ),
               ],
             ),

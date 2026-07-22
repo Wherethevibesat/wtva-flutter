@@ -4,13 +4,14 @@ import '../../theme/figma_theme.dart';
 import '../../widgets/wtva/wtva_bottom_nav.dart';
 import '../../utils/account_gate.dart';
 import 'check_in_sheet.dart';
-import 'discover_screen.dart';
+import 'concierge_sheet.dart';
+import 'events_browse_screen.dart';
 import 'main_tutorial_overlay.dart';
-import 'more_screen.dart';
 import 'messages_screen.dart';
-import 'ranking_screen.dart';
+import 'tonight_screen.dart';
+import 'venues_browse_screen.dart';
 
-/// Main app shell matching Figma bottom navigation.
+/// Main app shell — Tonight / Events / Check In / Inbox / Venues.
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -19,7 +20,7 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  /// Bottom nav index: 0 Discover, 1 Ranking, 2 FAB, 3 Messages, 4 More
+  /// 0 Tonight, 1 Events, 2 FAB, 3 Inbox, 4 Venues
   int _navIndex = 0;
 
   @override
@@ -40,14 +41,14 @@ class _AppShellState extends State<AppShell> {
   Widget get _body {
     switch (_navIndex) {
       case 1:
-        return const RankingScreen();
+        return const EventsBrowseScreen(embedded: true);
       case 3:
         return const MessagesScreen();
       case 4:
-        return const MoreScreen();
+        return const VenuesBrowseScreen(embedded: true);
       case 0:
       default:
-        return const DiscoverScreen();
+        return const TonightScreen();
     }
   }
 
@@ -55,18 +56,10 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: WtvaColors.dark500,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 220,
-            child: DecoratedBox(decoration: BoxDecoration(gradient: WtvaColors.shineOverlay)),
-          ),
-          _body,
-        ],
+      body: _body,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: _AskConciergeFab(
+        onPressed: () => ConciergeSheet.show(context),
       ),
       bottomNavigationBar: WtvaBottomNav(
         currentIndex: _navIndex,
@@ -83,5 +76,47 @@ class _AppShellState extends State<AppShell> {
     if (!await AccountGate.requireSignIn(context)) return;
     if (!mounted) return;
     CheckInSheet.show(context);
+  }
+}
+
+class _AskConciergeFab extends StatelessWidget {
+  const _AskConciergeFab({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: WtvaColors.buttonGradient,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: WtvaColors.buttonShadow,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(28),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.auto_awesome, color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Ask Concierge',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

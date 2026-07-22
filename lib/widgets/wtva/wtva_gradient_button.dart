@@ -27,9 +27,7 @@ class WtvaGradientButton extends StatelessWidget {
           gradient: active ? WtvaColors.buttonGradient : null,
           color: active ? null : WtvaColors.dark300,
           borderRadius: BorderRadius.circular(31),
-          border: active
-              ? Border.all(color: Colors.white.withValues(alpha: 0.2))
-              : Border.all(color: WtvaColors.night200),
+          border: active ? null : Border.all(color: WtvaColors.night200),
           boxShadow: active ? WtvaColors.buttonShadow : null,
         ),
         child: ElevatedButton(

@@ -187,7 +187,7 @@ class _ActiveCheckInScreenState extends State<ActiveCheckInScreen> {
                               end: Alignment.bottomCenter,
                               colors: [
                                 Colors.transparent,
-                                WtvaColors.dark500.withValues(alpha: 0.85),
+                                Colors.black.withValues(alpha: 0.65),
                               ],
                             ),
                           ),
@@ -202,6 +202,7 @@ class _ActiveCheckInScreenState extends State<ActiveCheckInScreen> {
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
+                            color: Colors.white,
                           ),
                         ),
                       ),
