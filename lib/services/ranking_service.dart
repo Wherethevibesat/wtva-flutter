@@ -226,21 +226,19 @@ class RankingService extends ChangeNotifier {
       return awards;
     }
 
-    final awards = <PointsAward>[];
+    // Demo/local check-in: record presence history only (no points economy).
     if (!session.checkInAwarded) {
-      awards.add(await award(PointsReason.checkIn));
       session.checkInAwarded = true;
       await _appendHistory(
         venueId: venueId,
         venueName: venueName,
         imageUrl: imageUrl,
-        pointsEarned: RankingRules.checkInPoints,
+        pointsEarned: 0,
         hasPost: false,
       );
     }
 
     if (includePostBonus && !session.postAwarded) {
-      awards.add(await award(PointsReason.checkInPost));
       session.postAwarded = true;
       if (_history.isNotEmpty && _history.first.venueId == venueId) {
         final first = _history.first;
@@ -250,7 +248,7 @@ class RankingService extends ChangeNotifier {
           venueName: first.venueName,
           imageUrl: first.imageUrl,
           dateLabel: first.dateLabel,
-          pointsEarned: first.pointsEarned + RankingRules.checkInPostPoints,
+          pointsEarned: 0,
           hasPost: true,
         );
         await _persistHistory();
@@ -259,7 +257,7 @@ class RankingService extends ChangeNotifier {
 
     await _persistSession();
     notifyListeners();
-    return awards;
+    return const [];
   }
 
   /// Server-authoritative check-in via the `check_in_venue` RPC. Applies the
@@ -272,7 +270,6 @@ class RankingService extends ChangeNotifier {
     String? caption,
     String? token,
   }) async {
-    final userId = _userId;
     final location = await LocationService.current();
     final result = await CheckInRepository.instance.checkInViaRpc(
       venueId: venueId,
@@ -283,51 +280,16 @@ class RankingService extends ChangeNotifier {
     if (result == null) return [];
 
     _pendingRankUp = null;
-    if (userId != null) {
-      final beforeRank = RankingRules.tierForPoints(_pointsByUser[userId] ?? 0).name;
-      _pointsByUser[userId] = result.totalPoints;
-      final afterRank = RankingRules.tierForPoints(result.totalPoints).name;
-      if (_rankIndex(afterRank) > _rankIndex(beforeRank)) {
-        _pendingRankUp = afterRank;
-      }
-      await _persistPoints(userId);
-    }
 
     await _appendHistory(
       venueId: venueId,
       venueName: venueName,
       imageUrl: imageUrl,
-      pointsEarned: result.pointsAwarded,
+      pointsEarned: 0,
       hasPost: caption != null && caption.isNotEmpty,
     );
 
-    final rankAfter = RankingRules.tierForPoints(result.totalPoints).name;
-    final awards = <PointsAward>[
-      PointsAward(
-        amount: result.basePoints,
-        totalAfter: result.totalPoints,
-        rankAfter: rankAfter,
-        rankUpTo: _pendingRankUp,
-        reason: PointsReason.checkIn,
-      ),
-    ];
-    if (result.firstVisit && result.firstVisitBonus > 0) {
-      awards.add(PointsAward(
-        amount: result.firstVisitBonus,
-        totalAfter: result.totalPoints,
-        rankAfter: rankAfter,
-        reason: PointsReason.firstVisit,
-      ));
-    }
-    if (result.streak && result.streakBonus > 0) {
-      awards.add(PointsAward(
-        amount: result.streakBonus,
-        totalAfter: result.totalPoints,
-        rankAfter: rankAfter,
-        reason: PointsReason.streak,
-      ));
-    }
-    return awards;
+    return const [];
   }
 
   /// Weekly leaderboard from the server points ledger (empty for demo sessions).
@@ -336,27 +298,8 @@ class RankingService extends ChangeNotifier {
     return RankingRepository.instance.fetchLeaderboardWindow(days: days);
   }
 
-  /// Awards +10 per newly completed full hour while checked in.
-  Future<PointsAward?> awardHourlyIfNeeded(Duration elapsed) async {
-    await load();
-    // Hourly-stay points are a demo-only accrual; real users earn only what the
-    // server ledger grants, so skip to avoid totals that reset on next sync.
-    if (_serverAuthoritative) return null;
-    final session = _activeSession;
-    if (session == null) return null;
-
-    final fullHours = elapsed.inHours;
-    if (fullHours <= session.hoursAwarded) return null;
-
-    final newHours = fullHours - session.hoursAwarded;
-    session.hoursAwarded = fullHours;
-    await _persistSession();
-
-    return award(
-      PointsReason.hourlyStay,
-      amount: newHours * RankingRules.hourlyStayPoints,
-    );
-  }
+  /// Points economy removed — hourly awards are disabled.
+  Future<PointsAward?> awardHourlyIfNeeded(Duration elapsed) async => null;
 
   Future<void> endCheckInSession() async {
     _activeSession = null;

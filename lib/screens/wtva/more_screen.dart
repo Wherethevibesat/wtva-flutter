@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../config/app_brand.dart';
 import '../../models/app_mode.dart';
 import '../../navigation/mode_navigation.dart';
-import '../../services/ranking_service.dart';
 import '../../services/user_service.dart';
 import '../../theme/figma_theme.dart';
 import '../../utils/account_gate.dart';
@@ -11,10 +10,10 @@ import 'map_search_screen.dart';
 import 'wtva_profile_screen.dart';
 import 'photos_hub_screen.dart';
 import 'wtva_notifications_screen.dart';
-import 'ranking_screen.dart';
-import 'rewards_screen.dart';
 import 'search_screen.dart';
 import 'drivers_browse_screen.dart';
+import 'night_packages_browse_screen.dart';
+import 'venues_browse_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
@@ -36,25 +35,26 @@ class MoreScreen extends StatelessWidget {
             style: const TextStyle(color: WtvaColors.neutral300, fontSize: 13),
           ),
           const SizedBox(height: 20),
-          if (isGuest)
-            _GuestBanner(
-              onSignIn: () => AccountGate.requireSignIn(context),
-            )
-          else
-            _PointsBanner(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const RankingScreen()),
-              ),
-            ),
-          const SizedBox(height: 20),
+          if (isGuest) ...[
+            _GuestBanner(onSignIn: () => AccountGate.requireSignIn(context)),
+            const SizedBox(height: 20),
+          ],
           _MenuTile(
-            icon: Icons.card_giftcard_outlined,
-            title: 'Rewards',
-            subtitle: 'Spend points on perks & drinks',
+            icon: Icons.nightlife_outlined,
+            title: 'Build Your Night',
+            subtitle: 'Curated multi-venue packages',
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const RewardsScreen()),
+              MaterialPageRoute(builder: (_) => const NightPackagesBrowseScreen()),
+            ),
+          ),
+          _MenuTile(
+            icon: Icons.apartment_outlined,
+            title: 'Venues',
+            subtitle: 'Browse clubs, lounges & spots',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const VenuesBrowseScreen()),
             ),
           ),
           _MenuTile(
@@ -173,13 +173,13 @@ class _GuestBanner extends StatelessWidget {
       child: InkWell(
         onTap: onSignIn,
         borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        child: const Padding(
+          padding: EdgeInsets.all(16),
           child: Row(
             children: [
-              const Icon(Icons.person_outline, color: WtvaColors.neutral200, size: 32),
-              const SizedBox(width: 12),
-              const Expanded(
+              Icon(Icons.person_outline, color: WtvaColors.neutral200, size: 32),
+              SizedBox(width: 12),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -193,70 +193,17 @@ class _GuestBanner extends StatelessWidget {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Sign up to earn points, message venues, and save your profile.',
+                      'Sign up to check in, message venues, and save your profile.',
                       style: TextStyle(fontSize: 13, color: WtvaColors.neutral300),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: WtvaColors.neutral300),
+              Icon(Icons.chevron_right, color: WtvaColors.neutral300),
             ],
           ),
         ),
       ),
-    );
-  }
-}
-
-class _PointsBanner extends StatelessWidget {
-  final VoidCallback? onTap;
-
-  const _PointsBanner({this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final ranking = RankingService.instance;
-    return ListenableBuilder(
-      listenable: ranking,
-      builder: (context, _) => GestureDetector(
-      onTap: onTap,
-      child: Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: WtvaColors.buttonGradient,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.stars, color: WtvaColors.onPrimary, size: 32),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  ranking.currentRank,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: WtvaColors.onPrimary,
-                  ),
-                ),
-                Text(
-                  '${ranking.currentPoints} points',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: WtvaColors.onPrimary.withValues(alpha: 0.7),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(Icons.chevron_right, color: WtvaColors.onPrimary.withValues(alpha: 0.5)),
-        ],
-      ),
-    ),
-    ),
     );
   }
 }

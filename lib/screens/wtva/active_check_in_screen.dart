@@ -5,7 +5,6 @@ import '../../data/mock_venue_store.dart';
 import '../../services/check_in_repository.dart';
 import '../../services/ranking_service.dart';
 import '../../theme/figma_theme.dart';
-import '../../utils/ranking_award_feedback.dart';
 import '../../utils/wtva_feedback.dart';
 import '../../widgets/wtva/wtva_gradient_button.dart';
 import 'check_in/qr_scan_screen.dart';
@@ -48,7 +47,7 @@ class _ActiveCheckInScreenState extends State<ActiveCheckInScreen> {
   Future<void> _bootstrapCheckIn({String? token}) async {
     final detail = MockVenueStore.byIdOrThrow(widget.venueId);
     try {
-      final awards = await RankingService.instance.beginCheckInSession(
+      await RankingService.instance.beginCheckInSession(
         venueId: widget.venueId,
         venueName: detail.venue.name,
         imageUrl: detail.venue.imageUrl,
@@ -57,7 +56,7 @@ class _ActiveCheckInScreenState extends State<ActiveCheckInScreen> {
       );
       if (!mounted) return;
       setState(() => _checkedIn = true);
-      showPointsAwards(context, awards);
+      showWtvaSnack(context, 'Checked in at ${detail.venue.name}', icon: Icons.check_circle);
     } catch (e) {
       if (!mounted) return;
       await _handleCheckInError(e);
@@ -117,13 +116,9 @@ class _ActiveCheckInScreenState extends State<ActiveCheckInScreen> {
     return msg.replaceAll(RegExp(r'[)]+$'), '').trim();
   }
 
-  Future<void> _onTick() async {
+  void _onTick() {
     if (!mounted) return;
     setState(() => _elapsed = DateTime.now().difference(_startedAt));
-    final hourly = await RankingService.instance.awardHourlyIfNeeded(_elapsed);
-    if (hourly != null && mounted) {
-      showPointsAward(context, hourly);
-    }
   }
 
   @override

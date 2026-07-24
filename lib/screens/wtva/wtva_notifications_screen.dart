@@ -3,7 +3,6 @@ import '../../data/mock_notifications_data.dart';
 import '../../services/notifications_repository.dart';
 import '../../theme/figma_theme.dart';
 import '../../utils/wtva_feedback.dart';
-import 'ranking_screen.dart';
 
 class WtvaNotificationsScreen extends StatefulWidget {
   const WtvaNotificationsScreen({super.key});
@@ -71,9 +70,6 @@ class _WtvaNotificationsScreenState extends State<WtvaNotificationsScreen> {
       }
     });
 
-    if (n.kind == IconKind.rank) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const RankingScreen()));
-    }
   }
 
   @override

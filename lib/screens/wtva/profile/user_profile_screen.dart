@@ -89,18 +89,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   const SizedBox(height: 12),
                   Text(u.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
                   Text('@${u.username}', style: const TextStyle(color: WtvaColors.neutral300)),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      gradient: WtvaColors.rankBlueGradient,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      u.rank,
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-                    ),
-                  ),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -114,8 +102,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         label: 'Following',
                         value: '${u.following}',
                       ),
-                      const SizedBox(width: 24),
-                      _Stat(label: 'Points', value: '${u.points}'),
                     ],
                   ),
                   if (!widget.isSelf) ...[
@@ -162,7 +148,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 padding: const EdgeInsets.all(20),
                 child: Text(
                   widget.isSelf
-                      ? 'Your WTVA profile. Check in at venues to earn points and climb the ranks.'
+                      ? 'Your WTVA profile. Check in at venues and save your favorite spots.'
                       : '${u.name} is on Where The Vibes At.',
                   style: const TextStyle(color: WtvaColors.neutral200, height: 1.5),
                 ),

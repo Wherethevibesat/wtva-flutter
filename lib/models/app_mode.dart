@@ -37,7 +37,7 @@ enum AppMode {
   String get pickerSubtitle {
     switch (this) {
       case AppMode.customer:
-        return 'Discover, check in, rank up';
+        return 'Discover, check in, ask Concierge';
       case AppMode.business:
         return 'Promote, book talent, analytics';
     }

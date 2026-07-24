@@ -89,6 +89,24 @@ class EventTicketPaymentIntent {
   final double amount;
 }
 
+class NightPackagePaymentIntent {
+  const NightPackagePaymentIntent({
+    required this.clientSecret,
+    required this.paymentIntentId,
+    required this.packageName,
+    required this.amount,
+    required this.partySize,
+    required this.stopCount,
+  });
+
+  final String clientSecret;
+  final String paymentIntentId;
+  final String packageName;
+  final double amount;
+  final int partySize;
+  final int stopCount;
+}
+
 class CustomerPortalApi {
   CustomerPortalApi._();
   static final CustomerPortalApi instance = CustomerPortalApi._();
@@ -98,7 +116,7 @@ class CustomerPortalApi {
   Future<String> _accessToken() async {
     final token = SupabaseBootstrap.client?.auth.currentSession?.accessToken;
     if (token == null || token.isEmpty) {
-      throw StateError('Sign in to get tickets.');
+      throw StateError('Sign in to continue.');
     }
     return token;
   }
@@ -137,6 +155,54 @@ class CustomerPortalApi {
   Future<void> confirmEventTicketPayment(String paymentIntentId) async {
     final res = await http.post(
       _uri('/api/checkout/event-confirm'),
+      headers: await _headers(),
+      body: jsonEncode({'paymentIntentId': paymentIntentId}),
+    );
+    final body = _decode(res);
+    if (res.statusCode != 200) {
+      throw StateError(body['error'] as String? ?? 'Payment confirmation failed');
+    }
+    if (body['status'] != 'confirmed') {
+      throw StateError('Payment has not completed yet');
+    }
+  }
+
+  Future<NightPackagePaymentIntent> createNightPackageIntent({
+    required String packageId,
+    required int partySize,
+    required List<String> stopOfferIds,
+  }) async {
+    final res = await http.post(
+      _uri('/api/checkout/night-package/create-intent'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'packageId': packageId,
+        'partySize': partySize,
+        'stopOfferIds': stopOfferIds,
+      }),
+    );
+    final body = _decode(res);
+    if (res.statusCode != 200) {
+      throw StateError(body['error'] as String? ?? 'Could not start checkout');
+    }
+    final clientSecret = body['clientSecret'] as String?;
+    final paymentIntentId = body['paymentIntentId'] as String?;
+    if (clientSecret == null || paymentIntentId == null) {
+      throw StateError('Invalid payment response');
+    }
+    return NightPackagePaymentIntent(
+      clientSecret: clientSecret,
+      paymentIntentId: paymentIntentId,
+      packageName: body['packageName'] as String? ?? 'Night package',
+      amount: _toDouble(body['amount']),
+      partySize: (body['partySize'] as num?)?.toInt() ?? partySize,
+      stopCount: (body['stopCount'] as num?)?.toInt() ?? stopOfferIds.length,
+    );
+  }
+
+  Future<void> confirmNightPackagePayment(String paymentIntentId) async {
+    final res = await http.post(
+      _uri('/api/checkout/night-package/confirm'),
       headers: await _headers(),
       body: jsonEncode({'paymentIntentId': paymentIntentId}),
     );
@@ -204,21 +270,29 @@ class CustomerPortalApi {
       headers['Authorization'] = 'Bearer $token';
     }
 
-    final res = await http.post(
-      _uri('/api/ai/concierge'),
-      headers: headers,
-      body: jsonEncode({
-        'query': query,
-        'sessionId': sessionId,
-        if (history.isNotEmpty)
-          'history': [
-            for (final t in history) {'role': t.role, 'content': t.content},
-          ],
-      }),
-    );
+    final http.Response res;
+    try {
+      res = await http.post(
+        _uri('/api/ai/concierge'),
+        headers: headers,
+        body: jsonEncode({
+          'query': query,
+          'sessionId': sessionId,
+          if (history.isNotEmpty)
+            'history': [
+              for (final t in history) {'role': t.role, 'content': t.content},
+            ],
+        }),
+      );
+    } catch (e) {
+      throw StateError('Could not reach Concierge. Check your connection and try again.');
+    }
     final body = _decode(res);
     if (res.statusCode != 200) {
-      throw StateError(body['error'] as String? ?? 'Concierge is unavailable');
+      throw StateError(
+        body['error'] as String? ??
+            'Concierge is unavailable (${res.statusCode})',
+      );
     }
     return ConciergeReply.fromJson(body);
   }

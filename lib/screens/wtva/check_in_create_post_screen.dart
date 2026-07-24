@@ -143,27 +143,6 @@ class _CheckInCreatePostScreenState extends State<CheckInCreatePostScreen> {
                       _PhotoSlot(imageUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&q=80'),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: WtvaColors.accentGreen.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: WtvaColors.accentGreen.withValues(alpha: 0.3)),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.stars, color: WtvaColors.accentGreen, size: 20),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Earn 25 points when you check in and post',
-                          style: TextStyle(fontSize: 13, color: WtvaColors.neutral200),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),

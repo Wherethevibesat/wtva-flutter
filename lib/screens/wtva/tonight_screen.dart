@@ -12,6 +12,7 @@ import 'concierge_sheet.dart';
 import 'event_detail_screen.dart';
 import 'events_browse_screen.dart';
 import 'more_screen.dart';
+import 'night_packages_browse_screen.dart';
 import 'search_screen.dart';
 import 'tip_night_sheet.dart';
 import 'wtva_notifications_screen.dart';
@@ -236,6 +237,20 @@ class _TonightScreenState extends State<TonightScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _TipNightBanner(
                 onTap: () => TipNightSheet.show(context, source: 'empty_feed'),
+              ),
+            ),
+          ),
+          const SpacedSliver(28),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _PlanNightCard(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const NightPackagesBrowseScreen(),
+                  ),
+                ),
               ),
             ),
           ),
@@ -744,6 +759,67 @@ class _TipNightBanner extends StatelessWidget {
                     SizedBox(height: 2),
                     Text(
                       'Tip a night or vibe — we’ll build the calendar from it.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: WtvaColors.neutral200,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: WtvaColors.neutral300),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlanNightCard extends StatelessWidget {
+  const _PlanNightCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Ink(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: WtvaColors.dark400,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: WtvaColors.night200),
+            boxShadow: WtvaColors.cardShadow,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: WtvaColors.buttonGradient,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.auto_awesome, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Build Your Night',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Templates you can swap, add to, and pay once.',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,

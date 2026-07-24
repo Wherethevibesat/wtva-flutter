@@ -12,7 +12,7 @@ class ComingSoonCityScreen extends StatelessWidget {
   static const _highlights = [
     'Curated events, day parties, and club nights',
     'Venue profiles, hours, and VIP tables',
-    'Check in, earn points, and climb the leaderboard',
+    'Check in and save your favorite spots',
     'A concierge that finds your vibe',
   ];
 

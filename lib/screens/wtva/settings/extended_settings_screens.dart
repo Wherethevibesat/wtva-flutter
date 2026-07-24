@@ -124,7 +124,7 @@ class WtvaShareAppScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'You both earn bonus points when they sign up',
+              'Invite friends to discover nightlife with you',
               textAlign: TextAlign.center,
               style: TextStyle(color: WtvaColors.neutral300),
             ),

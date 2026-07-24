@@ -8,16 +8,16 @@ class HelpSupportScreen extends StatelessWidget {
 
   static const _faqs = [
     (
-      'How do I earn points?',
-      'Check in at venues, post photos, and stay checked in. Higher ranks unlock paid invites from businesses.',
+      'How do I check in?',
+      'Open the center scan button, pick a venue nearby (or scan the venue QR if required), and confirm. Location helps verify you’re on site.',
     ),
     (
-      'What is Vibe Master?',
-      'At 10,000 points you become Vibe Master. Venues can invite you to paid check-ins.',
+      'What is Vibes Concierge?',
+      'Ask for nightlife picks by vibe, neighborhood, or timing. Concierge recommends real events and venues from WTVA.',
     ),
     (
       'How do venue invites work?',
-      'Businesses send invites through the app. Accept to check in and earn bonus points.',
+      'Businesses can send invites through the app. Accept to check in when you arrive.',
     ),
     (
       'Can I use the app without location?',
@@ -51,26 +51,36 @@ class HelpSupportScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: WtvaColors.dark400,
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: WtvaColors.night200),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Contact us',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  'Still need help?',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                 ),
                 const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () => launchUrl(Uri.parse('mailto:$_supportEmail')),
-                  child: const Text(
-                    _supportEmail,
-                    style: TextStyle(color: WtvaColors.lavender300, decoration: TextDecoration.underline),
-                  ),
+                const Text(
+                  'Email our team and we’ll get back to you.',
+                  style: TextStyle(color: WtvaColors.neutral300, height: 1.4),
                 ),
                 const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: () => _showContactDialog(context),
-                  child: const Text('Send a message'),
+                TextButton.icon(
+                  onPressed: () async {
+                    final uri = Uri(
+                      scheme: 'mailto',
+                      path: _supportEmail,
+                      query: 'subject=WTVA Support',
+                    );
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
+                    } else if (context.mounted) {
+                      showWtvaSnack(context, _supportEmail, icon: Icons.email_outlined);
+                    }
+                  },
+                  icon: const Icon(Icons.email_outlined),
+                  label: const Text(_supportEmail),
                 ),
               ],
             ),
@@ -79,59 +89,25 @@ class HelpSupportScreen extends StatelessWidget {
       ),
     );
   }
-
-  void _showContactDialog(BuildContext context) {
-    final controller = TextEditingController();
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: WtvaColors.dark400,
-        title: const Text('Message support'),
-        content: TextField(
-          controller: controller,
-          maxLines: 4,
-          decoration: const InputDecoration(hintText: 'How can we help?'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              showWtvaSnack(context, 'Message sent — we\'ll reply within 24 hours', icon: Icons.send);
-            },
-            child: const Text('Send'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _FaqTile extends StatelessWidget {
+  const _FaqTile({required this.question, required this.answer});
+
   final String question;
   final String answer;
 
-  const _FaqTile({required this.question, required this.answer});
-
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+    return Material(
+      color: WtvaColors.dark400,
+      borderRadius: BorderRadius.circular(12),
       child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-        backgroundColor: WtvaColors.dark400,
-        collapsedBackgroundColor: WtvaColors.dark400,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text(question, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        title: Text(question, style: const TextStyle(fontWeight: FontWeight.w700)),
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-            child: Text(
-              answer,
-              style: const TextStyle(fontSize: 13, color: WtvaColors.neutral300, height: 1.4),
-            ),
-          ),
+          Text(answer, style: const TextStyle(color: WtvaColors.neutral300, height: 1.4)),
         ],
       ),
     );

@@ -36,14 +36,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       body: 'Discover bars, clubs, and restaurants near you — see what’s live tonight.',
     ),
     _Slide(
-      icon: Icons.add_location_alt,
-      title: 'Check in & earn',
-      body: 'Check in at venues, collect points, and climb the ranks to unlock perks.',
+      icon: Icons.auto_awesome,
+      title: 'Ask the Concierge',
+      body: 'Tell us your vibe, budget, or neighborhood — get real picks for Houston.',
     ),
     _Slide(
-      icon: Icons.emoji_events,
-      title: 'Rank up',
-      body: 'From Vibee to Influencer — get noticed by venues and paid invites.',
+      icon: Icons.add_location_alt,
+      title: 'Check in',
+      body: 'Let venues know you’re there and keep a history of your nights out.',
     ),
   ];
 

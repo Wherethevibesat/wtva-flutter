@@ -21,7 +21,7 @@ class WtvaTermsScreen extends StatelessWidget {
           ),
           SizedBox(height: 12),
           Text(
-            'Where The Vibes At helps you discover nightlife venues, check in, earn points, and connect with the scene in your city. '
+            'Where The Vibes At helps you discover nightlife venues, check in, and connect with the scene in your city. '
             'You must be of legal drinking age in your region to use venue and alcohol-related features.',
             style: TextStyle(fontSize: 14, height: 1.6, color: WtvaColors.neutral200),
           ),

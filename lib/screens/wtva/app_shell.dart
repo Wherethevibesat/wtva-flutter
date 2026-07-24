@@ -9,9 +9,9 @@ import 'events_browse_screen.dart';
 import 'main_tutorial_overlay.dart';
 import 'messages_screen.dart';
 import 'tonight_screen.dart';
-import 'venues_browse_screen.dart';
+import 'night_packages_browse_screen.dart';
 
-/// Main app shell — Tonight / Events / Check In / Inbox / Venues.
+/// Main app shell — Tonight / Events / Check In / Plan / Inbox.
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -20,7 +20,7 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  /// 0 Tonight, 1 Events, 2 FAB, 3 Inbox, 4 Venues
+  /// 0 Tonight, 1 Events, 2 FAB, 3 Plan, 4 Inbox
   int _navIndex = 0;
 
   @override
@@ -43,9 +43,9 @@ class _AppShellState extends State<AppShell> {
       case 1:
         return const EventsBrowseScreen(embedded: true);
       case 3:
-        return const MessagesScreen();
+        return const NightPackagesBrowseScreen(embedded: true);
       case 4:
-        return const VenuesBrowseScreen(embedded: true);
+        return const MessagesScreen();
       case 0:
       default:
         return const TonightScreen();

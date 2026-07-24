@@ -3,6 +3,7 @@ import '../../screens/wtva/events_filters_sheet.dart';
 import '../../screens/wtva/search_screen.dart';
 import '../../services/neighborhoods_repository.dart';
 import '../../theme/figma_theme.dart';
+import 'wtva_pill_search_bar.dart';
 
 /// Web-parity home hero search: query + filters + popular chips.
 class HomeHeroSearch extends StatefulWidget {
@@ -87,54 +88,12 @@ class _HomeHeroSearchState extends State<HomeHeroSearch> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.95),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-            boxShadow: WtvaColors.cardShadow,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  textInputAction: TextInputAction.search,
-                  onSubmitted: (_) => _openSearch(),
-                  style: const TextStyle(
-                    color: WtvaColors.neutral50,
-                    fontSize: 14,
-                  ),
-                  decoration: const InputDecoration(
-                    hintText: 'Search events, DJs, venues…',
-                    hintStyle: TextStyle(
-                      color: WtvaColors.neutral300,
-                      fontSize: 13,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.search,
-                      color: WtvaColors.neutral300,
-                      size: 20,
-                    ),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    filled: false,
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              _FilterButton(
-                count: filterCount,
-                onPressed: _openFilters,
-              ),
-              const SizedBox(width: 6),
-              _SearchButton(onPressed: () => _openSearch()),
-            ],
-          ),
+        WtvaPillSearchBar(
+          controller: _controller,
+          hintText: 'Search events, DJs, venues…',
+          filterCount: filterCount,
+          onFilters: _openFilters,
+          onSubmitted: (_) => _openSearch(),
         ),
         const SizedBox(height: 12),
         Text(
@@ -174,99 +133,6 @@ class _HomeHeroSearchState extends State<HomeHeroSearch> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _FilterButton extends StatelessWidget {
-  const _FilterButton({required this.count, required this.onPressed});
-
-  final int count;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        OutlinedButton(
-          onPressed: onPressed,
-          style: OutlinedButton.styleFrom(
-            foregroundColor: WtvaColors.neutral50,
-            side: const BorderSide(color: WtvaColors.night200),
-            backgroundColor: WtvaColors.dark400,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            minimumSize: const Size(44, 44),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-          ),
-          child: const Icon(Icons.tune_rounded, size: 18),
-        ),
-        if (count > 0)
-          Positioned(
-            right: -2,
-            top: -2,
-            child: Container(
-              constraints: const BoxConstraints(minWidth: 16),
-              height: 16,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                color: WtvaColors.accentPurple,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                '$count',
-                style: const TextStyle(
-                  color: WtvaColors.onPrimary,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _SearchButton extends StatelessWidget {
-  const _SearchButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: WtvaColors.buttonGradient,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: WtvaColors.buttonShadow,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(28),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.search, size: 18, color: WtvaColors.onPrimary),
-                SizedBox(width: 4),
-                Text(
-                  'Search',
-                  style: TextStyle(
-                    color: WtvaColors.onPrimary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

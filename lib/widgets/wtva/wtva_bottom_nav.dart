@@ -50,14 +50,14 @@ class WtvaBottomNav extends StatelessWidget {
                   ),
                   _CheckInFab(onTap: onCheckIn),
                   _NavItem(
-                    icon: Icons.chat_bubble_outline,
-                    label: 'Inbox',
+                    icon: Icons.auto_awesome_outlined,
+                    label: 'Plan',
                     selected: currentIndex == 3,
                     onTap: () => onTap(3),
                   ),
                   _NavItem(
-                    icon: Icons.storefront_outlined,
-                    label: 'Venues',
+                    icon: Icons.chat_bubble_outline,
+                    label: 'Inbox',
                     selected: currentIndex == 4,
                     onTap: () => onTap(4),
                   ),

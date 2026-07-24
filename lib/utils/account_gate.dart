@@ -13,7 +13,7 @@ class AccountGate {
   static Future<bool> requireSignIn(
     BuildContext context, {
     String message =
-        'Create a free account or log in to check in, save favorites, and earn points.',
+        'Create a free account or log in to check in, save favorites, and message venues.',
   }) async {
     if (UserService().isLoggedIn) return true;
 

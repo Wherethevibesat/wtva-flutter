@@ -42,7 +42,7 @@ class _WtvaCheckInHistoryScreenState extends State<WtvaCheckInHistoryScreen> {
                   return WtvaEmptyState(
                     icon: Icons.history,
                     title: 'No check-ins yet',
-                    subtitle: 'Check in at venues to start earning points and building history.',
+                    subtitle: 'Check in at venues to build your nightlife history.',
                     actionLabel: 'Back',
                     onAction: () => Navigator.pop(context),
                   );
@@ -133,20 +133,7 @@ class _HistoryTile extends StatelessWidget {
                   ],
                 ),
               ),
-              if (entry.pointsEarned > 0)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '+${entry.pointsEarned}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: WtvaColors.accentGreen,
-                      ),
-                    ),
-                    const Text('pts', style: TextStyle(fontSize: 10, color: WtvaColors.neutral300)),
-                  ],
-                ),
+              const Icon(Icons.chevron_right, color: WtvaColors.neutral300),
             ],
           ),
         ),

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import '../../data/mock_messages_data.dart';
 import '../../services/user_service.dart';
 import '../../theme/figma_theme.dart';
-import '../../widgets/wtva/guest_locked_view.dart';
+import '../../widgets/wtva/wtva_gradient_button.dart';
 import 'chat/chat_conversation_screen.dart';
+import 'registration/registration_flow.dart';
+import 'wtva_login_screen.dart';
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
@@ -30,18 +32,9 @@ class _MessagesScreenState extends State<MessagesScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     if (UserService().isGuest) {
-      return Scaffold(
+      return const Scaffold(
         backgroundColor: WtvaColors.dark500,
-        appBar: AppBar(
-          backgroundColor: WtvaColors.dark500,
-          title: const Text('Messages', style: TextStyle(fontWeight: FontWeight.w700)),
-        ),
-        body: const GuestLockedView(
-          title: 'Messages are for members',
-          message:
-              'Log in or sign up to chat with venues and friends, and receive check-in invites.',
-          icon: Icons.chat_bubble_outline,
-        ),
+        body: SafeArea(child: _InboxMembersGate()),
       );
     }
 
@@ -49,7 +42,7 @@ class _MessagesScreenState extends State<MessagesScreen> with SingleTickerProvid
       backgroundColor: WtvaColors.dark500,
       appBar: AppBar(
         backgroundColor: WtvaColors.dark500,
-        title: const Text('Messages', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text('Inbox', style: TextStyle(fontWeight: FontWeight.w800)),
         bottom: TabBar(
           controller: _tabs,
           indicatorColor: WtvaColors.accentPurple,
@@ -89,6 +82,168 @@ class _MessagesScreenState extends State<MessagesScreen> with SingleTickerProvid
             icon: Icons.person_add_outlined,
             title: 'No requests',
             subtitle: 'Message requests will appear here when available.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InboxMembersGate extends StatelessWidget {
+  const _InboxMembersGate();
+
+  Future<void> _openLogin(BuildContext context) async {
+    UserService().logout();
+    await Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const WtvaLoginScreen()),
+      (_) => false,
+    );
+  }
+
+  Future<void> _openSignup(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const RegistrationFlow()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 120),
+      children: [
+        const Text(
+          'Inbox',
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.8,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 28),
+        Container(
+          padding: const EdgeInsets.fromLTRB(22, 28, 22, 28),
+          decoration: BoxDecoration(
+            color: WtvaColors.dark400,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: WtvaColors.night200),
+            boxShadow: WtvaColors.cardShadow,
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  gradient: WtvaColors.buttonGradient,
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: WtvaColors.buttonShadow,
+                ),
+                child: const Icon(
+                  Icons.forum_rounded,
+                  color: WtvaColors.onPrimary,
+                  size: 34,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Messages are for members',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
+                  height: 1.2,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Create a free account to chat with venues, get check-in invites, and keep your nightlife conversations in one place.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.45,
+                  color: WtvaColors.neutral200,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const _InboxPerk(
+                icon: Icons.storefront_outlined,
+                label: 'Message venues directly',
+              ),
+              const SizedBox(height: 10),
+              const _InboxPerk(
+                icon: Icons.confirmation_number_outlined,
+                label: 'Get check-in invites & updates',
+              ),
+              const SizedBox(height: 10),
+              const _InboxPerk(
+                icon: Icons.people_alt_outlined,
+                label: 'Chat with friends going out',
+              ),
+              const SizedBox(height: 28),
+              WtvaGradientButton(
+                label: 'Log in',
+                onPressed: () => _openLogin(context),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: OutlinedButton(
+                  onPressed: () => _openSignup(context),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: WtvaColors.accentPurple,
+                    backgroundColor: WtvaColors.dark400,
+                    side: const BorderSide(color: WtvaColors.accentPurple, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                  child: const Text('Create free account'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InboxPerk extends StatelessWidget {
+  const _InboxPerk({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: WtvaColors.dark300,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: WtvaColors.accentPurple),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: WtvaColors.neutral50,
+              ),
+            ),
           ),
         ],
       ),

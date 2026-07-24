@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../config/dev_auth_config.dart';
+import '../../models/app_mode.dart';
 import '../../utils/auth_errors.dart';
 import '../../services/auth_service.dart';
 import '../../services/push_notification_service.dart';
@@ -7,6 +8,7 @@ import '../../services/user_service.dart';
 import '../../theme/figma_theme.dart';
 import '../../navigation/mode_navigation.dart';
 import '../../widgets/wtva/wtva_auth_shell.dart';
+import '../../widgets/wtva/wtva_gradient_button.dart';
 import 'app_shell.dart';
 import 'registration/registration_flow.dart';
 import 'wtva_forgot_password_screen.dart';
@@ -29,10 +31,6 @@ class _WtvaLoginScreenState extends State<WtvaLoginScreen> {
   bool _obscurePassword = true;
   String? _errorMessage;
 
-  bool get _canSubmit =>
-      _emailController.text.trim().isNotEmpty &&
-      _passwordController.text.isNotEmpty;
-
   @override
   void initState() {
     super.initState();
@@ -43,11 +41,7 @@ class _WtvaLoginScreenState extends State<WtvaLoginScreen> {
       _emailController.text = '';
       _passwordController.text = '';
     }
-    _emailController.addListener(_onFieldsChanged);
-    _passwordController.addListener(_onFieldsChanged);
   }
-
-  void _onFieldsChanged() => setState(() {});
 
   @override
   void dispose() {
@@ -150,12 +144,6 @@ class _WtvaLoginScreenState extends State<WtvaLoginScreen> {
   Widget build(BuildContext context) {
     return WtvaAuthShell(
       onClose: () => ModeNavigation.openModePicker(context),
-      bottomButtonLabel: 'Log in',
-      bottomEnabled: _canSubmit,
-      bottomLoading: _isLoading,
-      onBottomPressed: _handleLogin,
-      bottomLinkLabel: 'Continue as a guest',
-      onBottomLinkPressed: _guestLogin,
       body: Form(
         key: _formKey,
         child: ListView(
@@ -230,7 +218,7 @@ class _WtvaLoginScreenState extends State<WtvaLoginScreen> {
                 ),
               ),
             ],
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
             TextFormField(
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
@@ -285,6 +273,85 @@ class _WtvaLoginScreenState extends State<WtvaLoginScreen> {
                   style: TextStyle(
                     color: WtvaColors.accentPurple,
                     fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 28),
+            WtvaGradientButton(
+              label: 'Log in',
+              onPressed: _handleLogin,
+              loading: _isLoading,
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                const Expanded(child: Divider(color: WtvaColors.night200)),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'or',
+                    style: TextStyle(
+                      color: WtvaColors.neutral300,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                const Expanded(child: Divider(color: WtvaColors.night200)),
+              ],
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: OutlinedButton(
+                onPressed: _isLoading ? null : _guestLogin,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: WtvaColors.accentPurple,
+                  backgroundColor: WtvaColors.dark400,
+                  side: const BorderSide(color: WtvaColors.accentPurple, width: 1.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
+                child: const Text('Continue as a guest'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Browse events and venues without an account',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: WtvaColors.neutral300,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: TextButton.icon(
+                onPressed: _isLoading
+                    ? null
+                    : () => ModeNavigation.switchToMode(context, AppMode.business),
+                icon: const Icon(Icons.storefront_outlined, size: 20),
+                label: const Text('Log in as a business owner'),
+                style: TextButton.styleFrom(
+                  foregroundColor: WtvaColors.neutral50,
+                  backgroundColor: WtvaColors.dark300,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                    side: const BorderSide(color: WtvaColors.night200),
+                  ),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
                   ),
                 ),
               ),

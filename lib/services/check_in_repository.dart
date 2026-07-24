@@ -25,8 +25,8 @@ class CheckInRepository {
       !DevAuthConfig.useDummyAuth &&
       UserService().currentUser != null;
 
-  /// Check in via the server RPC, which enforces cooldown/geofence/QR and awards
-  /// points atomically. Throws with a user-facing message on rejection.
+  /// Check in via the server RPC, which enforces cooldown/geofence/QR.
+  /// Throws with a user-facing message on rejection.
   Future<CheckInResult?> checkInViaRpc({
     required String venueId,
     String? caption,
@@ -112,7 +112,7 @@ class CheckInRepository {
       final rows = await client
           .from('check_ins')
           .select(
-            'id, venue_id, caption, image_url, started_at, created_at, points_awarded, venues(name, image_url)',
+            'id, venue_id, caption, image_url, started_at, created_at, venues(name, image_url)',
           )
           .eq('user_id', userId)
           .order('started_at', ascending: false)
@@ -134,7 +134,7 @@ class CheckInRepository {
           dateLabel: started == null
               ? 'Recently'
               : DateFormat('EEE, MMM d · h:mm a').format(started),
-          pointsEarned: (row['points_awarded'] as num?)?.toInt() ?? 0,
+          pointsEarned: 0,
           hasPost: caption != null && caption.isNotEmpty,
         );
       }).toList();
