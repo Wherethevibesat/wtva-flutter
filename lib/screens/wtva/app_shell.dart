@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/user_service.dart';
 import '../../theme/figma_theme.dart';
 import '../../widgets/wtva/wtva_bottom_nav.dart';
 import '../../utils/account_gate.dart';
@@ -7,11 +8,12 @@ import 'check_in_sheet.dart';
 import 'concierge_sheet.dart';
 import 'events_browse_screen.dart';
 import 'main_tutorial_overlay.dart';
+import 'member_dashboard_screen.dart';
 import 'messages_screen.dart';
 import 'tonight_screen.dart';
 import 'night_packages_browse_screen.dart';
 
-/// Main app shell — Tonight / Events / Check In / Plan / Inbox.
+/// Main app shell — Home(Dashboard|Tonight) / Events / Check In / Plan / Inbox.
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -20,8 +22,10 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  /// 0 Tonight, 1 Events, 2 FAB, 3 Plan, 4 Inbox
+  /// 0 Home, 1 Events, 2 FAB, 3 Plan, 4 Inbox
   int _navIndex = 0;
+
+  bool get _signedIn => !UserService().isGuest && UserService().isLoggedIn;
 
   @override
   void initState() {
@@ -48,6 +52,9 @@ class _AppShellState extends State<AppShell> {
         return const MessagesScreen();
       case 0:
       default:
+        if (_signedIn) {
+          return const MemberDashboardScreen(embedded: true);
+        }
         return const TonightScreen();
     }
   }
@@ -63,6 +70,8 @@ class _AppShellState extends State<AppShell> {
       ),
       bottomNavigationBar: WtvaBottomNav(
         currentIndex: _navIndex,
+        homeLabel: _signedIn ? 'Home' : 'Tonight',
+        homeIcon: _signedIn ? Icons.dashboard_outlined : Icons.nightlife_outlined,
         onTap: (index) {
           if (index == 2) return;
           setState(() => _navIndex = index);

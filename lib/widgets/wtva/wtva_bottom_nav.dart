@@ -8,12 +8,16 @@ class WtvaBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final VoidCallback onCheckIn;
+  final String homeLabel;
+  final IconData homeIcon;
 
   const WtvaBottomNav({
     super.key,
     required this.currentIndex,
     required this.onTap,
     required this.onCheckIn,
+    this.homeLabel = 'Tonight',
+    this.homeIcon = Icons.nightlife_outlined,
   });
 
   @override
@@ -37,8 +41,8 @@ class WtvaBottomNav extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _NavItem(
-                    icon: Icons.nightlife_outlined,
-                    label: 'Tonight',
+                    icon: homeIcon,
+                    label: homeLabel,
                     selected: currentIndex == 0,
                     onTap: () => onTap(0),
                   ),

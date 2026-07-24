@@ -12,6 +12,7 @@ import 'photos_hub_screen.dart';
 import 'wtva_notifications_screen.dart';
 import 'search_screen.dart';
 import 'drivers_browse_screen.dart';
+import 'member_dashboard_screen.dart';
 import 'night_packages_browse_screen.dart';
 import 'venues_browse_screen.dart';
 
@@ -84,6 +85,18 @@ class MoreScreen extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const MapSearchScreen()),
             ),
           ),
+          if (!isGuest)
+            _MenuTile(
+              icon: Icons.dashboard_outlined,
+              title: 'Dashboard',
+              subtitle: 'Your plans, check-ins & shortcuts',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const MemberDashboardScreen(),
+                ),
+              ),
+            ),
           _MenuTile(
             icon: Icons.person_outline,
             title: 'Profile',
