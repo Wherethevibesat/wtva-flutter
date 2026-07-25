@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import '../../data/mock_venue_store.dart';
 import '../../data/tonight_feed.dart';
 import '../../data/wtva_cities.dart';
+import '../../models/venue_detail.dart';
 import '../../services/events_repository.dart';
 import '../../services/user_service.dart';
+import '../../services/venue_repository.dart';
 import '../../theme/figma_theme.dart';
+import '../../widgets/wtva/home_build_your_night.dart';
 import '../../widgets/wtva/home_hero_search.dart';
 import '../../widgets/wtva/tonight_event_card.dart';
 import '../../utils/account_gate.dart';
@@ -15,6 +19,8 @@ import 'more_screen.dart';
 import 'night_packages_browse_screen.dart';
 import 'search_screen.dart';
 import 'tip_night_sheet.dart';
+import 'venue_detail_screen.dart';
+import 'venues_browse_screen.dart';
 import 'wtva_notifications_screen.dart';
 import 'wtva_profile_screen.dart';
 
@@ -28,8 +34,9 @@ class TonightScreen extends StatefulWidget {
 class _TonightScreenState extends State<TonightScreen> {
   String _city = WtvaCities.defaultCity.label;
   int _moodIndex = 0;
-  int _eventsTab = 0; // 0 Featured, 1 Upcoming
+  int _eventsTab = 0; // 0 Featured, 1 Upcoming, 2 Venues
   List<WtvaEventRecord> _events = const [];
+  List<VenueDetail> _venues = const [];
   bool _loading = true;
 
   static const _moods = [
@@ -47,13 +54,52 @@ class _TonightScreenState extends State<TonightScreen> {
     _load();
   }
 
-  Future<void> _load() async {
-    final events = await EventsRepository.instance.listPublished(limit: 40);
+  Future<void> _load({bool forceVenues = false}) async {
+    final results = await Future.wait([
+      EventsRepository.instance.listPublished(limit: 40),
+      VenueRepository.instance.hydrate(force: forceVenues).then((_) {
+        final all = MockVenueStore.all;
+        final featured = all.where((v) => v.featured).toList();
+        final list = featured.isNotEmpty ? featured : all;
+        list.sort((a, b) {
+          if (a.featured != b.featured) return a.featured ? -1 : 1;
+          return a.venue.name.toLowerCase().compareTo(b.venue.name.toLowerCase());
+        });
+        return list.take(12).toList();
+      }),
+    ]);
     if (!mounted) return;
     setState(() {
-      _events = events;
+      _events = results[0] as List<WtvaEventRecord>;
+      _venues = results[1] as List<VenueDetail>;
       _loading = false;
     });
+  }
+
+  void _openExploreSeeAll() {
+    if (_eventsTab == 2) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const VenuesBrowseScreen()),
+      );
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const EventsBrowseScreen()),
+    );
+  }
+
+  double? _exploreListHeight({
+    required bool loading,
+    required bool showVenues,
+    required bool eventsEmpty,
+    required bool venuesEmpty,
+  }) {
+    if (loading) return 196;
+    if (showVenues) return venuesEmpty ? null : 220;
+    if (eventsEmpty) return null;
+    return _eventsTab == 0 ? 248.0 : 196.0;
   }
 
   String get _firstName {
@@ -93,16 +139,19 @@ class _TonightScreenState extends State<TonightScreen> {
     final featured = TonightFeed.featuredEvents(_events);
     final upcoming = TonightFeed.upcomingEvents(_events);
     final activeEvents = _eventsTab == 0 ? featured : upcoming;
+    final showVenues = _eventsTab == 2;
     final vibes = TonightFeed.vibes(eventCount: _events.length);
 
-    return RefreshIndicator(
-      color: WtvaColors.accentPurple,
-      onRefresh: _load,
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverToBoxAdapter(
-            child: _HeroHeader(
+    return Scaffold(
+      backgroundColor: WtvaColors.dark500,
+      body: RefreshIndicator(
+        color: WtvaColors.accentPurple,
+        onRefresh: () => _load(forceVenues: true),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: _HeroHeader(
               city: _city,
               firstName: _firstName,
               moodIndex: _moodIndex,
@@ -140,7 +189,38 @@ class _TonightScreenState extends State<TonightScreen> {
               ),
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          const SliverToBoxAdapter(child: SizedBox(height: 20)),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: HomeBuildYourNightCard(
+                onBuild: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const NightPackagesBrowseScreen(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SpacedSliver(28),
+          SliverToBoxAdapter(
+            child: HomePlanYourNightSection(
+              onSeeAll: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const NightPackagesBrowseScreen(),
+                ),
+              ),
+              onVibeTap: (_) => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const NightPackagesBrowseScreen(),
+                ),
+              ),
+            ),
+          ),
+          const SpacedSliver(28),
           SpacedSliver(
             0,
             child: Padding(
@@ -158,10 +238,7 @@ class _TonightScreenState extends State<TonightScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const EventsBrowseScreen()),
-                    ),
+                    onPressed: _openExploreSeeAll,
                     style: TextButton.styleFrom(
                       foregroundColor: WtvaColors.accentPurple,
                       padding: EdgeInsets.zero,
@@ -191,44 +268,76 @@ class _TonightScreenState extends State<TonightScreen> {
           const SpacedSliver(14),
           SliverToBoxAdapter(
             child: SizedBox(
-              height: activeEvents.isEmpty && !_loading
-                  ? null
-                  : (_eventsTab == 0 ? 248.0 : 196.0),
+              height: _exploreListHeight(
+                loading: _loading,
+                showVenues: showVenues,
+                eventsEmpty: activeEvents.isEmpty,
+                venuesEmpty: _venues.isEmpty,
+              ),
               child: _loading
                   ? const SizedBox(
                       height: 196,
                       child: Center(child: CircularProgressIndicator()),
                     )
-                  : activeEvents.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: _EmptyEventsCard(
-                            onTip: () => TipNightSheet.show(context, source: 'empty_feed'),
-                            onBrowse: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const EventsBrowseScreen()),
-                            ),
-                          ),
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          scrollDirection: Axis.horizontal,
-                          itemCount: activeEvents.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 12),
-                          itemBuilder: (context, i) {
-                            final item = activeEvents[i];
-                            return TonightEventCard(
-                              item: item,
-                              featured: _eventsTab == 0,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => EventDetailScreen(eventId: item.eventId),
+                  : showVenues
+                      ? (_venues.isEmpty
+                          ? const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 20),
+                              child: _EmptyVenuesCard(),
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _venues.length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 12),
+                              itemBuilder: (context, i) {
+                                final detail = _venues[i];
+                                return _TonightVenueCard(
+                                  detail: detail,
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          VenueDetailScreen(venueId: detail.venue.id),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ))
+                      : activeEvents.isEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: _EmptyEventsCard(
+                                onTip: () =>
+                                    TipNightSheet.show(context, source: 'empty_feed'),
+                                onBrowse: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const EventsBrowseScreen(),
+                                  ),
                                 ),
                               ),
-                            );
-                          },
-                        ),
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              scrollDirection: Axis.horizontal,
+                              itemCount: activeEvents.length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 12),
+                              itemBuilder: (context, i) {
+                                final item = activeEvents[i];
+                                return TonightEventCard(
+                                  item: item,
+                                  featured: _eventsTab == 0,
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          EventDetailScreen(eventId: item.eventId),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
             ),
           ),
           const SpacedSliver(28),
@@ -242,21 +351,7 @@ class _TonightScreenState extends State<TonightScreen> {
           ),
           const SpacedSliver(28),
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _PlanNightCard(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const NightPackagesBrowseScreen(),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SpacedSliver(28),
-          SliverToBoxAdapter(
-            child: _ConciergeCard(
+            child: HomeConciergeBannerCard(
               onAsk: () => ConciergeSheet.show(context),
             ),
           ),
@@ -299,6 +394,7 @@ class _TonightScreenState extends State<TonightScreen> {
           const SpacedSliver(120),
         ],
       ),
+    ),
     );
   }
 }
@@ -676,7 +772,7 @@ class _EventsTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Featured', 'Upcoming'];
+    const tabs = ['Featured', 'Upcoming', 'Venues'];
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -711,6 +807,162 @@ class _EventsTabBar extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _EmptyVenuesCard extends StatelessWidget {
+  const _EmptyVenuesCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: WtvaColors.dark400,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: WtvaColors.night200),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'No venues listed yet',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Clubs, lounges, and nightlife spots will show up here.',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: WtvaColors.neutral300,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TonightVenueCard extends StatelessWidget {
+  const _TonightVenueCard({required this.detail, required this.onTap});
+
+  final VenueDetail detail;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final v = detail.venue;
+    final meta = [
+      if ((detail.neighborhood ?? '').trim().isNotEmpty) detail.neighborhood!.trim(),
+      if (detail.category.trim().isNotEmpty) detail.category.trim(),
+    ].join(' · ');
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          width: 178,
+          decoration: BoxDecoration(
+            color: WtvaColors.dark400,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: WtvaColors.night200),
+            boxShadow: WtvaColors.cardShadow,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                child: SizedBox(
+                  height: 104,
+                  width: double.infinity,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        v.imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            Container(color: WtvaColors.dark300),
+                      ),
+                      if (detail.featured)
+                        Positioned(
+                          left: 8,
+                          top: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: WtvaColors.buttonGradient,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Text(
+                              'Featured',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      v.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: WtvaColors.neutral50,
+                      ),
+                    ),
+                    if (meta.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        meta,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: WtvaColors.neutral300,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    Text(
+                      detail.isOpen ? 'Open now' : 'Closed',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: detail.isOpen
+                            ? WtvaColors.accentPurple
+                            : WtvaColors.neutral300,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -771,137 +1023,6 @@ class _TipNightBanner extends StatelessWidget {
               const Icon(Icons.chevron_right_rounded, color: WtvaColors.neutral300),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PlanNightCard extends StatelessWidget {
-  const _PlanNightCard({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
-        child: Ink(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: WtvaColors.dark400,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: WtvaColors.night200),
-            boxShadow: WtvaColors.cardShadow,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: WtvaColors.buttonGradient,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(Icons.auto_awesome, color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Build Your Night',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Templates you can swap, add to, and pay once.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: WtvaColors.neutral200,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded, color: WtvaColors.neutral300),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ConciergeCard extends StatelessWidget {
-  const _ConciergeCard({required this.onAsk});
-
-  final VoidCallback onAsk;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          gradient: WtvaColors.buttonGradient,
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: WtvaColors.buttonShadow,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.auto_awesome, size: 16, color: Colors.white),
-                SizedBox(width: 6),
-                Text(
-                  'Vibes Concierge',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Tell us the vibe you want — music, neighborhood, budget — and we’ll match real events and venues.',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
-                height: 1.35,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(28),
-              child: InkWell(
-                onTap: onAsk,
-                borderRadius: BorderRadius.circular(28),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Text(
-                    'Ask Concierge →',
-                    style: TextStyle(
-                      color: WtvaColors.accentPurple,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );

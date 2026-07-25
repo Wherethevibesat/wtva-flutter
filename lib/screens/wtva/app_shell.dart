@@ -25,6 +25,9 @@ class _AppShellState extends State<AppShell> {
   /// 0 Home, 1 Events, 2 FAB, 3 Plan, 4 Inbox
   int _navIndex = 0;
 
+  /// Signed-in Home tab: dashboard by default; flip to Tonight (main feed).
+  bool _showTonightHome = false;
+
   bool get _signedIn => !UserService().isGuest && UserService().isLoggedIn;
 
   @override
@@ -42,6 +45,20 @@ class _AppShellState extends State<AppShell> {
     });
   }
 
+  void _openTonightHome() {
+    setState(() {
+      _navIndex = 0;
+      _showTonightHome = true;
+    });
+  }
+
+  void _openDashboardHome() {
+    setState(() {
+      _navIndex = 0;
+      _showTonightHome = false;
+    });
+  }
+
   Widget get _body {
     switch (_navIndex) {
       case 1:
@@ -52,8 +69,11 @@ class _AppShellState extends State<AppShell> {
         return const MessagesScreen();
       case 0:
       default:
-        if (_signedIn) {
-          return const MemberDashboardScreen(embedded: true);
+        if (_signedIn && !_showTonightHome) {
+          return MemberDashboardScreen(
+            embedded: true,
+            onOpenTonight: _openTonightHome,
+          );
         }
         return const TonightScreen();
     }
@@ -61,6 +81,7 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final onTonight = _signedIn && _showTonightHome && _navIndex == 0;
     return Scaffold(
       backgroundColor: WtvaColors.dark500,
       body: _body,
@@ -70,10 +91,17 @@ class _AppShellState extends State<AppShell> {
       ),
       bottomNavigationBar: WtvaBottomNav(
         currentIndex: _navIndex,
-        homeLabel: _signedIn ? 'Home' : 'Tonight',
-        homeIcon: _signedIn ? Icons.dashboard_outlined : Icons.nightlife_outlined,
+        homeLabel: !_signedIn || onTonight ? 'Tonight' : 'Home',
+        homeIcon: !_signedIn || onTonight
+            ? Icons.nightlife_outlined
+            : Icons.dashboard_outlined,
         onTap: (index) {
           if (index == 2) return;
+          if (index == 0 && _signedIn) {
+            // Home / Tonight tab always returns to the personal dashboard.
+            _openDashboardHome();
+            return;
+          }
           setState(() => _navIndex = index);
         },
         onCheckIn: _openCheckIn,

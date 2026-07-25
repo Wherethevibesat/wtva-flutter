@@ -13,9 +13,16 @@ import 'wtva_profile_screen.dart';
 
 /// Personal hub after sign-in — plans, check-in, and shortcuts.
 class MemberDashboardScreen extends StatefulWidget {
-  const MemberDashboardScreen({super.key, this.embedded = false});
+  const MemberDashboardScreen({
+    super.key,
+    this.embedded = false,
+    this.onOpenTonight,
+  });
 
   final bool embedded;
+
+  /// Opens the main Tonight homepage inside the app shell (preferred when embedded).
+  final VoidCallback? onOpenTonight;
 
   @override
   State<MemberDashboardScreen> createState() => _MemberDashboardScreenState();
@@ -48,6 +55,17 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
     await _ordersFuture;
   }
 
+  void _goToTonight() {
+    if (widget.onOpenTonight != null) {
+      widget.onOpenTonight!();
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const TonightScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomPad = widget.embedded ? 100.0 : 32.0;
@@ -58,6 +76,10 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
         foregroundColor: WtvaColors.neutral50,
         title: const Text('Dashboard'),
         actions: [
+          TextButton(
+            onPressed: _goToTonight,
+            child: const Text('Tonight'),
+          ),
           IconButton(
             tooltip: 'Account',
             onPressed: () {
@@ -89,6 +111,70 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
               'Your nightlife hub — plans, check-ins, and what’s next.',
               style: TextStyle(fontSize: 14, color: WtvaColors.neutral300),
             ),
+            const SizedBox(height: 16),
+            Material(
+              color: WtvaColors.dark400,
+              borderRadius: BorderRadius.circular(16),
+              child: InkWell(
+                onTap: _goToTonight,
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: WtvaColors.accentPurple.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          gradient: WtvaColors.buttonGradient,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.nightlife_outlined,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Browse Tonight',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                                color: WtvaColors.neutral50,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Open the main discover homepage',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: WtvaColors.neutral300,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 14,
+                        color: WtvaColors.accentPurple,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: 22),
             GridView.count(
               crossAxisCount: 2,
@@ -98,6 +184,12 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
               crossAxisSpacing: 12,
               childAspectRatio: 1.35,
               children: [
+                _ActionTile(
+                  icon: Icons.nightlife_outlined,
+                  label: 'Tonight',
+                  desc: 'Main homepage',
+                  onTap: _goToTonight,
+                ),
                 _ActionTile(
                   icon: Icons.auto_awesome_outlined,
                   label: 'Build Your Night',
@@ -139,15 +231,6 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const MessagesScreen()),
-                  ),
-                ),
-                _ActionTile(
-                  icon: Icons.nightlife_outlined,
-                  label: 'Tonight',
-                  desc: 'Discover feed',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const TonightScreen()),
                   ),
                 ),
               ],
