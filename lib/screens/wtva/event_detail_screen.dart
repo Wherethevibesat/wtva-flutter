@@ -54,7 +54,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       if (tier.priceCents <= 0) {
         await checkout.freeRsvp(eventId: widget.eventId, tier: tier);
       } else {
-        await checkout.purchaseTicket(eventId: widget.eventId, tier: tier);
+        await checkout.purchaseTicket(
+          context: context,
+          eventId: widget.eventId,
+          tier: tier,
+        );
       }
       if (!mounted) return;
       showWtvaSnack(

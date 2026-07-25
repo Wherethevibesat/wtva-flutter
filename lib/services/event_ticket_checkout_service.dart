@@ -1,7 +1,10 @@
+import 'package:flutter/material.dart';
+
 import '../data/ticket_tier.dart';
 import '../services/customer_portal_api.dart';
 import '../services/stripe_bootstrap.dart';
 import '../services/supabase_bootstrap.dart';
+import '../widgets/wtva/stripe_collect_payment.dart';
 
 class EventTicketCheckoutService {
   EventTicketCheckoutService._();
@@ -21,6 +24,7 @@ class EventTicketCheckoutService {
   }
 
   Future<void> purchaseTicket({
+    required BuildContext context,
     required String eventId,
     required EventTicketTierRecord tier,
   }) async {
@@ -41,8 +45,13 @@ class EventTicketCheckoutService {
       tierId: tier.id,
     );
 
-    await StripeBootstrap.presentPaymentSheet(
+    if (!context.mounted) throw StateError('Payment cancelled');
+    final dollars = tier.priceCents / 100;
+    final whole = dollars == dollars.roundToDouble();
+    await collectStripePayment(
+      context,
       clientSecret: intent.clientSecret,
+      amountLabel: '\$${dollars.toStringAsFixed(whole ? 0 : 2)}',
     );
 
     await _api.confirmEventTicketPayment(intent.paymentIntentId);

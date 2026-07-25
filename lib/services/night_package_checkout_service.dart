@@ -1,8 +1,9 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import '../services/customer_portal_api.dart';
 import '../services/stripe_bootstrap.dart';
 import '../services/supabase_bootstrap.dart';
+import '../widgets/wtva/stripe_collect_payment.dart';
 
 class NightPackageCheckoutService {
   NightPackageCheckoutService._();
@@ -12,6 +13,7 @@ class NightPackageCheckoutService {
   final _api = CustomerPortalApi.instance;
 
   Future<NightPackagePaymentIntent> purchase({
+    required BuildContext context,
     required String packageId,
     required int partySize,
     required List<String> stopOfferIds,
@@ -39,8 +41,11 @@ class NightPackageCheckoutService {
       startsOn: startsOn,
     );
 
-    await StripeBootstrap.presentPaymentSheet(
+    if (!context.mounted) throw StateError('Payment cancelled');
+    await collectStripePayment(
+      context,
       clientSecret: intent.clientSecret,
+      amountLabel: _money(intent.amount),
     );
 
     await _api.confirmNightPackagePayment(intent.paymentIntentId);
@@ -92,8 +97,10 @@ class NightPackageCheckoutService {
   }
 
   Future<String> payShare({
+    required BuildContext context,
     required String groupId,
     required String shareId,
+    required double amount,
     void Function(String stage)? onStage,
   }) async {
     final token =
@@ -115,14 +122,21 @@ class NightPackageCheckoutService {
       groupId: groupId,
       shareId: shareId,
     );
-    debugPrint('payShare → got PI ${intent.paymentIntentId}');
 
-    stage('Opening card form…');
-    await StripeBootstrap.presentPaymentSheet(
+    stage('Opening payment…');
+    if (!context.mounted) throw StateError('Payment cancelled');
+    await collectStripePayment(
+      context,
       clientSecret: intent.clientSecret,
+      amountLabel: _money(intent.amount > 0 ? intent.amount : amount),
     );
 
     stage('Confirming…');
     return _api.confirmVibeSharePayment(intent.paymentIntentId);
+  }
+
+  String _money(double dollars) {
+    final whole = dollars == dollars.roundToDouble();
+    return '\$${dollars.toStringAsFixed(whole ? 0 : 2)}';
   }
 }

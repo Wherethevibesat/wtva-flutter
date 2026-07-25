@@ -406,6 +406,7 @@ class _NightPackagePlanScreenState extends State<NightPackagePlanScreen> {
       }
 
       final result = await NightPackageCheckoutService.instance.purchase(
+        context: context,
         packageId: widget.package.id,
         partySize: _partySize,
         stopOfferIds: _stops.map((s) => s.id).toList(),

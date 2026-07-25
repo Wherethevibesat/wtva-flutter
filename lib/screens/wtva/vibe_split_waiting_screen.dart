@@ -124,8 +124,10 @@ class _VibeSplitWaitingScreenState extends State<VibeSplitWaitingScreen> {
     });
     try {
       final status = await NightPackageCheckoutService.instance.payShare(
+        context: context,
         groupId: group.id,
         shareId: payable.id,
+        amount: payable.amount,
         onStage: (stage) {
           if (!mounted) return;
           setState(() => _payStage = stage);
