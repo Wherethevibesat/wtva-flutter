@@ -32,14 +32,23 @@ class NightPackageCheckoutService {
       throw StateError('Sign in to continue.');
     }
 
-    await StripeBootstrap.ensureReady();
-
-    final intent = await _api.createNightPackageIntent(
-      packageId: packageId,
-      partySize: partySize,
-      stopOfferIds: stopOfferIds,
-      startsOn: startsOn,
+    await StripeBootstrap.ensureReady().timeout(
+      const Duration(seconds: 20),
+      onTimeout: () => throw StateError('Stripe took too long. Try again.'),
     );
+
+    final intent = await _api
+        .createNightPackageIntent(
+          packageId: packageId,
+          partySize: partySize,
+          stopOfferIds: stopOfferIds,
+          startsOn: startsOn,
+        )
+        .timeout(
+          const Duration(seconds: 30),
+          onTimeout: () =>
+              throw StateError('Could not start payment. Check your connection.'),
+        );
 
     if (!context.mounted) throw StateError('Payment cancelled');
     await collectStripePayment(
@@ -115,15 +124,21 @@ class NightPackageCheckoutService {
     }
 
     stage('Loading Stripe…');
-    await StripeBootstrap.ensureReady();
-
-    stage('Starting payment…');
-    final intent = await _api.createVibeShareIntent(
-      groupId: groupId,
-      shareId: shareId,
+    await StripeBootstrap.ensureReady().timeout(
+      const Duration(seconds: 20),
+      onTimeout: () => throw StateError('Stripe took too long. Try again.'),
     );
 
-    stage('Opening payment…');
+    stage('Starting payment…');
+    final intent = await _api
+        .createVibeShareIntent(groupId: groupId, shareId: shareId)
+        .timeout(
+          const Duration(seconds: 30),
+          onTimeout: () =>
+              throw StateError('Could not start payment. Check your connection.'),
+        );
+
+    stage('Opening checkout…');
     if (!context.mounted) throw StateError('Payment cancelled');
     await collectStripePayment(
       context,

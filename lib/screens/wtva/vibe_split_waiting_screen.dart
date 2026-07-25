@@ -120,7 +120,7 @@ class _VibeSplitWaitingScreenState extends State<VibeSplitWaitingScreen> {
 
     setState(() {
       _paying = true;
-      _payStage = 'Loading Stripe…';
+      _payStage = 'Starting…';
     });
     try {
       final status = await NightPackageCheckoutService.instance.payShare(
@@ -130,6 +130,14 @@ class _VibeSplitWaitingScreenState extends State<VibeSplitWaitingScreen> {
         amount: payable.amount,
         onStage: (stage) {
           if (!mounted) return;
+          // Clear the stuck "Processing" button once checkout UI is about to open.
+          if (stage.startsWith('Opening') || stage.startsWith('Checkout')) {
+            setState(() {
+              _paying = false;
+              _payStage = stage;
+            });
+            return;
+          }
           setState(() => _payStage = stage);
         },
       );
