@@ -112,7 +112,7 @@ class _StripeCardPaySheetState extends State<_StripeCardPaySheet> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Pay with card',
+              'Checkout',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
@@ -121,7 +121,7 @@ class _StripeCardPaySheetState extends State<_StripeCardPaySheet> {
             ),
             const SizedBox(height: 4),
             Text(
-              widget.amountLabel,
+              'Total ${widget.amountLabel}',
               style: const TextStyle(
                 fontSize: 14,
                 color: WtvaColors.neutral300,
@@ -172,7 +172,7 @@ class _StripeCardPaySheetState extends State<_StripeCardPaySheet> {
                 ),
               ),
               child: Text(
-                _busy ? 'Processing…' : 'Pay ${widget.amountLabel}',
+                _busy ? 'Processing…' : 'Pay ${widget.amountLabel} now',
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ),

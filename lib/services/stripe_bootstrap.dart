@@ -22,10 +22,16 @@ class StripeBootstrap {
   static Future<void>? _readyFuture;
 
   /// iOS Simulator often can't present PaymentSheet / Apple Pay reliably.
+  /// Dart may not inherit SIMULATOR_* env vars, so also treat debug iOS as sim-like.
   static bool get isIosSimulator {
     if (kIsWeb || !Platform.isIOS) return false;
-    return Platform.environment.containsKey('SIMULATOR_DEVICE_NAME') ||
-        Platform.environment.containsKey('SIMULATOR_UDID');
+    if (Platform.environment.containsKey('SIMULATOR_DEVICE_NAME') ||
+        Platform.environment.containsKey('SIMULATOR_UDID') ||
+        Platform.environment.containsKey('SIMULATOR_HOST_HOME')) {
+      return true;
+    }
+    // Fallback: debug/profile builds on iOS are usually the Simulator for us.
+    return !kReleaseMode;
   }
 
   static Future<void> warmUp() {
