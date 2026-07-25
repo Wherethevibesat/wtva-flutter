@@ -9,6 +9,7 @@ import 'messages_screen.dart';
 import 'night_package_orders_screen.dart';
 import 'night_packages_browse_screen.dart';
 import 'tonight_screen.dart';
+import 'vibe_split_waiting_screen.dart';
 import 'wtva_profile_screen.dart';
 
 /// Personal hub after sign-in — plans, check-in, and shortcuts.
@@ -29,12 +30,24 @@ class MemberDashboardScreen extends StatefulWidget {
 }
 
 class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
-  late Future<List<NightPackageOrderRecord>> _ordersFuture;
+  late Future<_DashPlans> _plansFuture;
 
   @override
   void initState() {
     super.initState();
-    _ordersFuture = NightPackagesRepository.instance.listMyOrders();
+    _plansFuture = _loadPlans();
+  }
+
+  Future<_DashPlans> _loadPlans() async {
+    final repo = NightPackagesRepository.instance;
+    final results = await Future.wait([
+      repo.listOpenPaymentGroups(),
+      repo.listMyOrders(),
+    ]);
+    return _DashPlans(
+      openSplits: results[0] as List<OpenVibeSplitRecord>,
+      orders: results[1] as List<NightPackageOrderRecord>,
+    );
   }
 
   String get _firstName {
@@ -50,9 +63,9 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
 
   Future<void> _refresh() async {
     setState(() {
-      _ordersFuture = NightPackagesRepository.instance.listMyOrders();
+      _plansFuture = _loadPlans();
     });
-    await _ordersFuture;
+    await _plansFuture;
   }
 
   void _goToTonight() {
@@ -260,8 +273,8 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            FutureBuilder<List<NightPackageOrderRecord>>(
-              future: _ordersFuture,
+            FutureBuilder<_DashPlans>(
+              future: _plansFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Padding(
@@ -269,8 +282,15 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                     child: Center(child: CircularProgressIndicator()),
                   );
                 }
-                final orders = snapshot.data ?? const [];
-                if (orders.isEmpty) {
+                final plans = snapshot.data ??
+                    const _DashPlans(openSplits: [], orders: []);
+                final orders = plans.orders;
+                final openSplits = plans.openSplits;
+                final openCard = openSplits.isEmpty
+                    ? null
+                    : _openSplitTeaser(openSplits.first);
+
+                if (orders.isEmpty && openSplits.isEmpty) {
                   return Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -312,8 +332,11 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                     ),
                   );
                 }
+                if (orders.isEmpty) {
+                  return openCard ?? const SizedBox.shrink();
+                }
                 final order = orders.first;
-                return Container(
+                final booked = Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: WtvaColors.dark400,
@@ -403,6 +426,15 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                     ],
                   ),
                 );
+                if (openCard == null) return booked;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    openCard,
+                    const SizedBox(height: 12),
+                    booked,
+                  ],
+                );
               },
             ),
           ],
@@ -410,6 +442,90 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
       ),
     );
   }
+
+  Widget _openSplitTeaser(OpenVibeSplitRecord split) {
+    final cta = split.mySharePending && split.myAmountCents != null
+        ? 'Finish payment · ${_money(split.myAmountCents!)}'
+        : 'Open waiting room';
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: WtvaColors.dark400,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: WtvaColors.accentPurple.withValues(alpha: 0.45),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'IN PROGRESS · SPLIT PAY',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+              color: WtvaColors.accentPurple,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            split.packageTitle,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              color: WtvaColors.neutral50,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            split.role == 'host'
+                ? '${split.paidCount}/${split.payerCount} paid · ${split.partySize} guests'
+                : (split.mySharePending
+                    ? 'Your share unpaid · ${split.partySize} guests'
+                    : 'Waiting on others · ${split.partySize} guests'),
+            style: const TextStyle(
+              fontSize: 13,
+              color: WtvaColors.neutral300,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => VibeSplitWaitingScreen(
+                    inviteToken: split.inviteToken,
+                    packageTitle: split.packageTitle,
+                  ),
+                ),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: WtvaColors.accentPurple,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              child: Text(cta),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashPlans {
+  const _DashPlans({
+    required this.openSplits,
+    required this.orders,
+  });
+
+  final List<OpenVibeSplitRecord> openSplits;
+  final List<NightPackageOrderRecord> orders;
 }
 
 class _ActionTile extends StatelessWidget {

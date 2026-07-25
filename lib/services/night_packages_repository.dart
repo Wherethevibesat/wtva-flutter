@@ -142,6 +142,37 @@ class NightPackageOrderRecord {
   final List<NightPackageOrderStopRecord> stops;
 }
 
+/// Open split-pay group the user can finish later (My Plans).
+class OpenVibeSplitRecord {
+  const OpenVibeSplitRecord({
+    required this.id,
+    required this.inviteToken,
+    required this.packageTitle,
+    required this.partySize,
+    required this.startsOn,
+    required this.totalCents,
+    required this.expiresAt,
+    required this.paidCount,
+    required this.payerCount,
+    required this.mySharePending,
+    this.myAmountCents,
+    this.role,
+  });
+
+  final String id;
+  final String inviteToken;
+  final String packageTitle;
+  final int partySize;
+  final String startsOn;
+  final int totalCents;
+  final DateTime expiresAt;
+  final int paidCount;
+  final int payerCount;
+  final bool mySharePending;
+  final int? myAmountCents;
+  final String? role;
+}
+
 /// Published Curated Vibes from Supabase (`night_packages`).
 class NightPackagesRepository {
   NightPackagesRepository._();
@@ -251,6 +282,81 @@ class NightPackagesRepository {
       return (row?['night_package_commission_pct'] as num?)?.toDouble() ?? 15;
     } catch (_) {
       return 15;
+    }
+  }
+
+  Future<List<OpenVibeSplitRecord>> listOpenPaymentGroups() async {
+    if (!AppConfig.useSupabaseData || !SupabaseBootstrap.initialized) {
+      return const [];
+    }
+    final client = SupabaseBootstrap.client;
+    final userId = client?.auth.currentUser?.id;
+    if (client == null || userId == null) return const [];
+
+    try {
+      final rows = await client
+          .from('vibe_payment_groups')
+          .select('''
+            id, invite_token, party_size, starts_on, total_cents, status,
+            expires_at, payer_count, host_user_id,
+            package:night_packages(title),
+            shares:vibe_payment_shares(id, status, role, amount_cents, user_id)
+          ''')
+          .eq('status', 'collecting')
+          .gt('expires_at', DateTime.now().toUtc().toIso8601String())
+          .order('created_at', ascending: false);
+
+      final now = DateTime.now().toUtc();
+      final out = <OpenVibeSplitRecord>[];
+      for (final row in (rows as List).cast<Map<String, dynamic>>()) {
+        final expiresRaw = row['expires_at'] as String?;
+        final expiresAt = expiresRaw == null
+            ? null
+            : DateTime.tryParse(expiresRaw)?.toUtc();
+        if (expiresAt == null || !expiresAt.isAfter(now)) continue;
+
+        final isHost = row['host_user_id'] == userId;
+        final shares =
+            ((row['shares'] as List?) ?? const []).cast<Map<String, dynamic>>();
+        Map<String, dynamic>? myShare;
+        for (final s in shares) {
+          if (s['user_id'] == userId) {
+            myShare = s;
+            break;
+          }
+        }
+        if (!isHost && myShare == null) continue;
+
+        final pkgRaw = row['package'];
+        final packageTitle = pkgRaw is Map
+            ? (pkgRaw['title'] as String? ?? 'Your vibe')
+            : 'Your vibe';
+        final paidCount =
+            shares.where((s) => s['status'] == 'paid').length;
+        final role = (myShare?['role'] as String?) ?? (isHost ? 'host' : null);
+
+        out.add(
+          OpenVibeSplitRecord(
+            id: row['id'] as String,
+            inviteToken: row['invite_token'] as String? ?? '',
+            packageTitle: packageTitle,
+            partySize: (row['party_size'] as num?)?.toInt() ?? 1,
+            startsOn: row['starts_on'] as String? ?? '',
+            totalCents: (row['total_cents'] as num?)?.toInt() ?? 0,
+            expiresAt: expiresAt,
+            paidCount: paidCount,
+            payerCount: (row['payer_count'] as num?)?.toInt() ?? shares.length,
+            mySharePending: myShare != null
+                ? myShare['status'] == 'pending'
+                : isHost,
+            myAmountCents: (myShare?['amount_cents'] as num?)?.toInt(),
+            role: role,
+          ),
+        );
+      }
+      return out.where((g) => g.inviteToken.isNotEmpty).toList();
+    } catch (_) {
+      return const [];
     }
   }
 
