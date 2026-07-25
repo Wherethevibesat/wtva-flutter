@@ -133,6 +133,7 @@ class VibeSplitShare {
     required this.status,
     this.userId,
     this.label,
+    this.email,
   });
 
   final String id;
@@ -141,6 +142,7 @@ class VibeSplitShare {
   final String status;
   final String? userId;
   final String? label;
+  final String? email;
 }
 
 class VibeSplitGroupStatus {
@@ -152,6 +154,7 @@ class VibeSplitGroupStatus {
     required this.total,
     required this.paidCount,
     required this.shares,
+    this.hostUserId,
     this.openGuestShareId,
   });
 
@@ -161,8 +164,59 @@ class VibeSplitGroupStatus {
   final String packageTitle;
   final double total;
   final int paidCount;
+  final String? hostUserId;
   final String? openGuestShareId;
   final List<VibeSplitShare> shares;
+
+  /// Share the signed-in user should pay (host share for host, else claimed/open guest).
+  VibeSplitShare? payableShareFor({
+    required String? userId,
+    String? userEmail,
+    String? preferredShareId,
+  }) {
+    if (status != 'collecting') return null;
+
+    VibeSplitShare? byId(String? id) {
+      if (id == null || id.isEmpty) return null;
+      for (final s in shares) {
+        if (s.id == id && s.status == 'pending') return s;
+      }
+      return null;
+    }
+
+    final preferred = byId(preferredShareId);
+    if (preferred != null) return preferred;
+
+    for (final s in shares) {
+      if (s.userId == userId && s.status == 'pending') return s;
+    }
+
+    if (userId != null && hostUserId == userId) {
+      for (final s in shares) {
+        if (s.role == 'host' && s.status == 'pending') return s;
+      }
+      return null;
+    }
+
+    final email = userEmail?.trim().toLowerCase();
+    if (email != null && email.isNotEmpty) {
+      for (final s in shares) {
+        if (s.role == 'guest' &&
+            s.status == 'pending' &&
+            (s.email?.toLowerCase() == email)) {
+          return s;
+        }
+      }
+    }
+
+    final openId = openGuestShareId;
+    if (openId != null) {
+      for (final s in shares) {
+        if (s.id == openId && s.status == 'pending') return s;
+      }
+    }
+    return null;
+  }
 }
 
 class CustomerPortalApi {
@@ -318,11 +372,21 @@ class CustomerPortalApi {
     required String groupId,
     required String shareId,
   }) async {
-    final res = await http.post(
-      _uri('/api/checkout/night-package/group/pay-share'),
-      headers: await _headers(),
-      body: jsonEncode({'groupId': groupId, 'shareId': shareId}),
-    );
+    late http.Response res;
+    try {
+      res = await http
+          .post(
+            _uri('/api/checkout/night-package/group/pay-share'),
+            headers: await _headers(),
+            body: jsonEncode({'groupId': groupId, 'shareId': shareId}),
+          )
+          .timeout(const Duration(seconds: 25));
+    } catch (_) {
+      throw StateError(
+        'Could not reach checkout (${CustomerPortalConfig.apiBaseUrl}). '
+        'Check your connection and try again.',
+      );
+    }
     final body = _decode(res);
     if (res.statusCode != 200) {
       throw StateError(body['error'] as String? ?? 'Could not start share payment');
@@ -340,11 +404,21 @@ class CustomerPortalApi {
   }
 
   Future<String> confirmVibeSharePayment(String paymentIntentId) async {
-    final res = await http.post(
-      _uri('/api/checkout/night-package/group/confirm-share'),
-      headers: await _headers(),
-      body: jsonEncode({'paymentIntentId': paymentIntentId}),
-    );
+    late http.Response res;
+    try {
+      res = await http
+          .post(
+            _uri('/api/checkout/night-package/group/confirm-share'),
+            headers: await _headers(),
+            body: jsonEncode({'paymentIntentId': paymentIntentId}),
+          )
+          .timeout(const Duration(seconds: 25));
+    } catch (_) {
+      throw StateError(
+        'Payment may have gone through, but confirmation timed out. '
+        'Check My Plans in a moment.',
+      );
+    }
     final body = _decode(res);
     if (res.statusCode != 200 && body['status'] != 'pending') {
       throw StateError(body['error'] as String? ?? 'Share confirm failed');
@@ -353,10 +427,17 @@ class CustomerPortalApi {
   }
 
   Future<VibeSplitGroupStatus> fetchVibeSplitGroup(String token) async {
-    final res = await http.get(
-      _uri('/api/checkout/night-package/group/$token'),
-      headers: await _headers(),
-    );
+    late http.Response res;
+    try {
+      res = await http
+          .get(
+            _uri('/api/checkout/night-package/group/$token'),
+            headers: await _headers(),
+          )
+          .timeout(const Duration(seconds: 20));
+    } catch (_) {
+      throw StateError('Could not load split — check your connection.');
+    }
     final body = _decode(res);
     if (res.statusCode != 200) {
       throw StateError(body['error'] as String? ?? 'Split not found');
@@ -371,6 +452,7 @@ class CustomerPortalApi {
             status: s['status'] as String? ?? 'pending',
             userId: s['userId'] as String?,
             label: s['label'] as String?,
+            email: s['email'] as String?,
           ),
         )
         .toList();
@@ -381,6 +463,7 @@ class CustomerPortalApi {
       packageTitle: body['packageTitle'] as String? ?? 'Your vibe',
       total: _toDouble(body['total']),
       paidCount: (body['paidCount'] as num?)?.toInt() ?? 0,
+      hostUserId: body['hostUserId'] as String?,
       openGuestShareId: body['openGuestShareId'] as String?,
       shares: shares,
     );

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/customer_portal_api.dart';
 import '../../services/night_package_checkout_service.dart';
+import '../../services/supabase_bootstrap.dart';
 import '../../theme/figma_theme.dart';
 import '../../utils/account_gate.dart';
 import '../../utils/wtva_feedback.dart';
@@ -16,11 +17,13 @@ class VibeSplitWaitingScreen extends StatefulWidget {
     required this.inviteToken,
     this.inviteUrl,
     this.packageTitle,
+    this.preferredShareId,
   });
 
   final String inviteToken;
   final String? inviteUrl;
   final String? packageTitle;
+  final String? preferredShareId;
 
   @override
   State<VibeSplitWaitingScreen> createState() => _VibeSplitWaitingScreenState();
@@ -31,13 +34,18 @@ class _VibeSplitWaitingScreenState extends State<VibeSplitWaitingScreen> {
   String? _error;
   bool _loading = true;
   bool _paying = false;
+  String _payStage = 'Processing…';
   Timer? _poll;
 
   @override
   void initState() {
     super.initState();
     _refresh();
-    _poll = Timer.periodic(const Duration(seconds: 4), (_) => _refresh());
+    // Never refresh while PaymentSheet is presenting — iOS can hang/hide the sheet.
+    _poll = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (_paying) return;
+      _refresh();
+    });
   }
 
   @override
@@ -47,10 +55,11 @@ class _VibeSplitWaitingScreenState extends State<VibeSplitWaitingScreen> {
   }
 
   Future<void> _refresh() async {
+    if (_paying) return;
     try {
       final group =
           await CustomerPortalApi.instance.fetchVibeSplitGroup(widget.inviteToken);
-      if (!mounted) return;
+      if (!mounted || _paying) return;
       setState(() {
         _group = group;
         _error = null;
@@ -60,7 +69,7 @@ class _VibeSplitWaitingScreenState extends State<VibeSplitWaitingScreen> {
         _poll?.cancel();
       }
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || _paying) return;
       setState(() {
         _error = e is StateError ? e.message : 'Could not load split';
         _loading = false;
@@ -73,10 +82,21 @@ class _VibeSplitWaitingScreenState extends State<VibeSplitWaitingScreen> {
     return '\$${dollars.toStringAsFixed(whole ? 0 : 2)}';
   }
 
-  Future<void> _payGuestShare() async {
+  VibeSplitShare? get _myShare {
     final group = _group;
-    final shareId = group?.openGuestShareId;
-    if (group == null || shareId == null || _paying) return;
+    if (group == null) return null;
+    final user = SupabaseBootstrap.client?.auth.currentUser;
+    return group.payableShareFor(
+      userId: user?.id,
+      userEmail: user?.email,
+      preferredShareId: widget.preferredShareId,
+    );
+  }
+
+  Future<void> _payMyShare() async {
+    final group = _group;
+    final share = _myShare;
+    if (group == null || share == null || _paying) return;
 
     final ok = await AccountGate.requireSignIn(
       context,
@@ -85,11 +105,31 @@ class _VibeSplitWaitingScreenState extends State<VibeSplitWaitingScreen> {
     );
     if (!ok || !mounted) return;
 
-    setState(() => _paying = true);
+    // Re-resolve after login (host share vs guest).
+    final payable = _group?.payableShareFor(
+      userId: SupabaseBootstrap.client?.auth.currentUser?.id,
+      userEmail: SupabaseBootstrap.client?.auth.currentUser?.email,
+      preferredShareId: widget.preferredShareId,
+    );
+    if (payable == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No unpaid share found for your account.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _paying = true;
+      _payStage = 'Loading Stripe…';
+    });
     try {
       final status = await NightPackageCheckoutService.instance.payShare(
         groupId: group.id,
-        shareId: shareId,
+        shareId: payable.id,
+        onStage: (stage) {
+          if (!mounted) return;
+          setState(() => _payStage = stage);
+        },
       );
       if (!mounted) return;
       await _refresh();
@@ -101,11 +141,16 @@ class _VibeSplitWaitingScreenState extends State<VibeSplitWaitingScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      final msg = e is StateError ? e.message : 'Payment failed';
-      if (msg == 'Payment cancelled') return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      final msg = e is StateError ? e.message : e.toString();
+      if (msg == 'Payment cancelled' || msg.contains('Payment cancelled')) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), duration: const Duration(seconds: 6)),
+      );
     } finally {
-      if (mounted) setState(() => _paying = false);
+      _paying = false;
+      if (mounted) setState(() {});
     }
   }
 
@@ -113,6 +158,7 @@ class _VibeSplitWaitingScreenState extends State<VibeSplitWaitingScreen> {
   Widget build(BuildContext context) {
     final group = _group;
     final title = widget.packageTitle ?? group?.packageTitle ?? 'Split vibe';
+    final myShare = _myShare;
 
     return Scaffold(
       backgroundColor: WtvaColors.dark500,
@@ -174,7 +220,9 @@ class _VibeSplitWaitingScreenState extends State<VibeSplitWaitingScreen> {
                               Expanded(
                                 child: Text(
                                   share.role == 'host'
-                                      ? 'Host'
+                                      ? (myShare?.id == share.id
+                                          ? 'You (host)'
+                                          : 'Host')
                                       : (share.label?.trim().isNotEmpty == true
                                           ? share.label!
                                           : 'Friend'),
@@ -255,22 +303,35 @@ class _VibeSplitWaitingScreenState extends State<VibeSplitWaitingScreen> {
                       ),
                     ),
                   ],
-                  if (group.status == 'collecting' &&
-                      group.openGuestShareId != null) ...[
+                  if (group.status == 'collecting' && myShare != null) ...[
                     const SizedBox(height: 12),
                     FilledButton(
-                      onPressed: _paying ? null : _payGuestShare,
+                      onPressed: _paying ? null : _payMyShare,
                       style: FilledButton.styleFrom(
                         backgroundColor: WtvaColors.accentPurple,
                         foregroundColor: Colors.white,
+                        disabledBackgroundColor:
+                            WtvaColors.accentPurple.withValues(alpha: 0.45),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(999),
                         ),
                       ),
                       child: Text(
-                        _paying ? 'Processing…' : 'Pay my share',
+                        _paying ? _payStage : 'Pay ${_money(myShare.amount)}',
                         style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                  if (group.status == 'collecting' &&
+                      myShare == null &&
+                      group.shares.any((s) => s.status == 'pending')) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      'Your share is already paid, or sign in with the invited email to pay.',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: WtvaColors.neutral300,
                       ),
                     ),
                   ],

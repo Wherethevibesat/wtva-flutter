@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../services/customer_portal_api.dart';
 import '../services/stripe_bootstrap.dart';
 import '../services/supabase_bootstrap.dart';
@@ -92,6 +94,7 @@ class NightPackageCheckoutService {
   Future<String> payShare({
     required String groupId,
     required String shareId,
+    void Function(String stage)? onStage,
   }) async {
     final token =
         SupabaseBootstrap.client?.auth.currentSession?.accessToken ?? '';
@@ -99,17 +102,27 @@ class NightPackageCheckoutService {
       throw StateError('Sign in to continue.');
     }
 
+    void stage(String s) {
+      debugPrint('payShare → $s');
+      onStage?.call(s);
+    }
+
+    stage('Loading Stripe…');
     await StripeBootstrap.ensureReady();
 
+    stage('Starting payment…');
     final intent = await _api.createVibeShareIntent(
       groupId: groupId,
       shareId: shareId,
     );
+    debugPrint('payShare → got PI ${intent.paymentIntentId}');
 
+    stage('Opening card form…');
     await StripeBootstrap.presentPaymentSheet(
       clientSecret: intent.clientSecret,
     );
 
+    stage('Confirming…');
     return _api.confirmVibeSharePayment(intent.paymentIntentId);
   }
 }
