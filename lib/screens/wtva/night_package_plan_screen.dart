@@ -33,6 +33,10 @@ class _NightPackagePlanScreenState extends State<NightPackagePlanScreen> {
   /// solo = pay full total; split = multi-payer group
   String _payMode = 'solo';
   int _payerCount = 2;
+  String _splitMode = 'even'; // even | custom
+  int _expiresInMinutes = 1440;
+  final List<TextEditingController> _guestEmailCtrls = [TextEditingController()];
+  final List<TextEditingController> _amountCtrls = [];
 
   @override
   void initState() {
@@ -55,6 +59,7 @@ class _NightPackagePlanScreenState extends State<NightPackagePlanScreen> {
         )
         .toList();
     _partySize = widget.package.partySizeMin;
+    _syncSplitFields();
     _loadCatalog();
   }
 
@@ -105,6 +110,44 @@ class _NightPackagePlanScreenState extends State<NightPackagePlanScreen> {
     final base = _total ~/ n;
     final remainder = _total - base * n;
     return base + remainder; // host share (first)
+  }
+
+  List<int> get _evenSplitCents {
+    final n = _payerCount.clamp(2, 20);
+    final base = _total ~/ n;
+    final rem = _total - base * n;
+    return List.generate(n, (i) => base + (i == 0 ? rem : 0));
+  }
+
+  void _syncSplitFields() {
+    final guests = (_payerCount - 1).clamp(1, 19);
+    while (_guestEmailCtrls.length < guests) {
+      _guestEmailCtrls.add(TextEditingController());
+    }
+    while (_guestEmailCtrls.length > guests) {
+      _guestEmailCtrls.removeLast().dispose();
+    }
+    final amounts = _evenSplitCents;
+    while (_amountCtrls.length < _payerCount) {
+      _amountCtrls.add(TextEditingController());
+    }
+    while (_amountCtrls.length > _payerCount) {
+      _amountCtrls.removeLast().dispose();
+    }
+    for (var i = 0; i < amounts.length; i++) {
+      _amountCtrls[i].text = (amounts[i] / 100).toStringAsFixed(2);
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _guestEmailCtrls) {
+      c.dispose();
+    }
+    for (final c in _amountCtrls) {
+      c.dispose();
+    }
+    super.dispose();
   }
 
   Future<void> _pickDate() async {
@@ -322,34 +365,39 @@ class _NightPackagePlanScreenState extends State<NightPackagePlanScreen> {
     setState(() => _checkingOut = true);
     try {
       if (_payMode == 'split') {
-        final result =
-            await NightPackageCheckoutService.instance.startSplitAndPayHost(
+        final emails = _guestEmailCtrls.map((c) => c.text.trim()).toList();
+        if (emails.any((e) => e.isEmpty || !e.contains('@'))) {
+          throw StateError('Add a valid email for each friend');
+        }
+        List<int>? customCents;
+        if (_splitMode == 'custom') {
+          customCents = _amountCtrls
+              .map((c) => ((double.tryParse(c.text.trim()) ?? 0) * 100).round())
+              .toList();
+          final sum = customCents.fold<int>(0, (a, b) => a + b);
+          if (sum != _total) {
+            throw StateError(
+              'Custom amounts must add up to ${_money(_total)}',
+            );
+          }
+        }
+        final group = await NightPackageCheckoutService.instance.sendSplitRequests(
           packageId: widget.package.id,
           partySize: _partySize,
           stopOfferIds: _stops.map((s) => s.id).toList(),
           startsOn: _startsOnIso,
           payerCount: _payerCount,
+          guestEmails: emails,
+          splitMode: _splitMode,
+          amountCents: customCents,
+          expiresInMinutes: _expiresInMinutes,
         );
         if (!mounted) return;
-        if (result.status == 'group_paid' || result.status == 'paid') {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (_) => NightPackageSuccessScreen(
-                packageName: widget.package.title,
-                amount: result.group.total,
-                partySize: _partySize,
-                stopCount: _stops.length,
-                startsOnLabel: _startsOnLabel,
-              ),
-            ),
-          );
-          return;
-        }
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (_) => VibeSplitWaitingScreen(
-              inviteToken: result.group.inviteToken,
-              inviteUrl: result.group.inviteUrl,
+              inviteToken: group.inviteToken,
+              inviteUrl: group.inviteUrl,
               packageTitle: widget.package.title,
             ),
           ),
@@ -654,7 +702,10 @@ class _NightPackagePlanScreenState extends State<NightPackagePlanScreen> {
               IconButton(
                 onPressed: _payerCount <= 2
                     ? null
-                    : () => setState(() => _payerCount -= 1),
+                    : () => setState(() {
+                          _payerCount -= 1;
+                          _syncSplitFields();
+                        }),
                 icon: const Icon(Icons.remove_circle_outline),
                 color: WtvaColors.neutral200,
               ),
@@ -667,17 +718,132 @@ class _NightPackagePlanScreenState extends State<NightPackagePlanScreen> {
                 ),
               ),
               IconButton(
-                onPressed: _payerCount >= 20
+                onPressed: _payerCount >= 10
                     ? null
-                    : () => setState(() => _payerCount += 1),
+                    : () => setState(() {
+                          _payerCount += 1;
+                          _syncSplitFields();
+                        }),
                 icon: const Icon(Icons.add_circle_outline),
                 color: WtvaColors.neutral200,
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _PayModeChip(
+                  label: 'Even',
+                  selected: _splitMode == 'even',
+                  onTap: () => setState(() {
+                    _splitMode = 'even';
+                    _syncSplitFields();
+                  }),
+                ),
+              ),
+              Expanded(
+                child: _PayModeChip(
+                  label: 'Custom',
+                  selected: _splitMode == 'custom',
+                  onTap: () => setState(() {
+                    _splitMode = 'custom';
+                    _syncSplitFields();
+                  }),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           Text(
-            'About ${_money(_total ~/ _payerCount.clamp(2, 20))} each · you pay ${_money(_splitShareCents)} first, then share the invite.',
+            _splitMode == 'even'
+                ? 'About ${_money(_total ~/ _payerCount.clamp(2, 20))} each · emails go out when you send.'
+                : 'Set each person’s amount (must total ${_money(_total)}).',
             style: const TextStyle(fontSize: 13, color: WtvaColors.neutral300),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Your share: ${_money(_splitMode == 'custom' && _amountCtrls.isNotEmpty ? (((double.tryParse(_amountCtrls.first.text) ?? 0) * 100).round()) : _splitShareCents)}',
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              color: WtvaColors.neutral50,
+            ),
+          ),
+          for (var i = 0; i < _guestEmailCtrls.length; i++) ...[
+            const SizedBox(height: 8),
+            TextField(
+              controller: _guestEmailCtrls[i],
+              keyboardType: TextInputType.emailAddress,
+              style: const TextStyle(color: WtvaColors.neutral50),
+              decoration: InputDecoration(
+                labelText: 'Friend ${i + 1} email',
+                labelStyle: const TextStyle(color: WtvaColors.neutral300),
+                filled: true,
+                fillColor: WtvaColors.dark400,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            if (_splitMode == 'custom' && _amountCtrls.length > i + 1) ...[
+              const SizedBox(height: 6),
+              TextField(
+                controller: _amountCtrls[i + 1],
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(color: WtvaColors.neutral50),
+                decoration: InputDecoration(
+                  labelText: 'Friend ${i + 1} amount (\$)',
+                  labelStyle: const TextStyle(color: WtvaColors.neutral300),
+                  filled: true,
+                  fillColor: WtvaColors.dark400,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ],
+          if (_splitMode == 'custom' && _amountCtrls.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            TextField(
+              controller: _amountCtrls.first,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              style: const TextStyle(color: WtvaColors.neutral50),
+              decoration: InputDecoration(
+                labelText: 'Your amount (\$)',
+                labelStyle: const TextStyle(color: WtvaColors.neutral300),
+                filled: true,
+                fillColor: WtvaColors.dark400,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          DropdownButtonFormField<int>(
+            initialValue: _expiresInMinutes,
+            dropdownColor: WtvaColors.dark400,
+            style: const TextStyle(color: WtvaColors.neutral50),
+            decoration: InputDecoration(
+              labelText: 'Friends have until',
+              labelStyle: const TextStyle(color: WtvaColors.neutral300),
+              filled: true,
+              fillColor: WtvaColors.dark400,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            items: const [
+              DropdownMenuItem(value: 30, child: Text('30 minutes')),
+              DropdownMenuItem(value: 60, child: Text('1 hour')),
+              DropdownMenuItem(value: 360, child: Text('6 hours')),
+              DropdownMenuItem(value: 1440, child: Text('24 hours')),
+              DropdownMenuItem(value: 2880, child: Text('48 hours')),
+            ],
+            onChanged: (v) {
+              if (v != null) setState(() => _expiresInMinutes = v);
+            },
           ),
         ],
         const SizedBox(height: 20),
@@ -768,7 +934,7 @@ class _NightPackagePlanScreenState extends State<NightPackagePlanScreen> {
               _checkingOut
                   ? 'Processing…'
                   : (_payMode == 'split'
-                      ? 'Pay my share & invite'
+                      ? 'Send payment requests'
                       : VibeCopy.bookMyVibe),
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),

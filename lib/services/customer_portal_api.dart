@@ -277,6 +277,10 @@ class CustomerPortalApi {
     required List<String> stopOfferIds,
     required String startsOn,
     required int payerCount,
+    required List<String> guestEmails,
+    String splitMode = 'even',
+    List<int>? amountCents,
+    int expiresInMinutes = 1440,
   }) async {
     final res = await http.post(
       _uri('/api/checkout/night-package/group/create'),
@@ -287,6 +291,10 @@ class CustomerPortalApi {
         'stopOfferIds': stopOfferIds,
         'startsOn': startsOn,
         'payerCount': payerCount,
+        'guestEmails': guestEmails,
+        'splitMode': splitMode,
+        if (amountCents != null) 'amountCents': amountCents,
+        'expiresInMinutes': expiresInMinutes,
       }),
     );
     final body = _decode(res);

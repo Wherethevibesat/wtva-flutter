@@ -45,13 +45,17 @@ class NightPackageCheckoutService {
     return intent;
   }
 
-  /// Host creates a split group, pays their share, returns invite details.
-  Future<({VibeSplitGroupCreated group, String status})> startSplitAndPayHost({
+  /// Create split group, email guests, return waiting-room details (host may pay later).
+  Future<VibeSplitGroupCreated> sendSplitRequests({
     required String packageId,
     required int partySize,
     required List<String> stopOfferIds,
     required String startsOn,
     required int payerCount,
+    required List<String> guestEmails,
+    String splitMode = 'even',
+    List<int>? amountCents,
+    int expiresInMinutes = 1440,
   }) async {
     if (stopOfferIds.isEmpty) {
       throw StateError('Add at least one stop to your vibe');
@@ -62,6 +66,9 @@ class NightPackageCheckoutService {
     if (payerCount < 2) {
       throw StateError('Split needs at least 2 people');
     }
+    if (guestEmails.length != payerCount - 1) {
+      throw StateError('Add an email for each friend');
+    }
 
     final token =
         SupabaseBootstrap.client?.auth.currentSession?.accessToken ?? '';
@@ -69,27 +76,17 @@ class NightPackageCheckoutService {
       throw StateError('Sign in to continue.');
     }
 
-    await StripeBootstrap.ensureReady();
-
-    final group = await _api.createVibeSplitGroup(
+    return _api.createVibeSplitGroup(
       packageId: packageId,
       partySize: partySize,
       stopOfferIds: stopOfferIds,
       startsOn: startsOn,
       payerCount: payerCount,
+      guestEmails: guestEmails,
+      splitMode: splitMode,
+      amountCents: amountCents,
+      expiresInMinutes: expiresInMinutes,
     );
-
-    final intent = await _api.createVibeShareIntent(
-      groupId: group.groupId,
-      shareId: group.hostShareId,
-    );
-
-    await StripeBootstrap.presentPaymentSheet(
-      clientSecret: intent.clientSecret,
-    );
-
-    final status = await _api.confirmVibeSharePayment(intent.paymentIntentId);
-    return (group: group, status: status);
   }
 
   Future<String> payShare({
