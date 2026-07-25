@@ -30,6 +30,10 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Take photos for check-in posts and scan venue QR codes.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Confirm you're at the venue when you check in, including when the app is in the background during an active check-in.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Confirm you're at the venue when you check in.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Confirm you're at the venue when you check in.</string>
 	<key>NSMicrophoneUsageDescription</key>
