@@ -18,7 +18,10 @@ class StripeBootstrap {
   static Future<void> ensureReady() async {
     final key = await StripeSettingsRepository.instance.fetchPublishableKey();
     if (key == null || key.isEmpty) {
-      throw StateError('Checkout is not available yet.');
+      throw StateError(
+        'Checkout is not available yet — Stripe publishable key missing. '
+        'Set it in Admin → Stripe, or NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY on the customer site.',
+      );
     }
 
     final needsApply =
