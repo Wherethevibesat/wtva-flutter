@@ -97,6 +97,7 @@ class NightPackagePaymentIntent {
     required this.amount,
     required this.partySize,
     required this.stopCount,
+    this.mobilePayUrl,
   });
 
   final String clientSecret;
@@ -105,6 +106,8 @@ class NightPackagePaymentIntent {
   final double amount;
   final int partySize;
   final int stopCount;
+  /// Customer-site Payment Element URL (Apple Pay, bank, Cash App, card…).
+  final String? mobilePayUrl;
 }
 
 class VibeSplitGroupCreated {
@@ -322,6 +325,7 @@ class CustomerPortalApi {
       amount: _toDouble(body['amount']),
       partySize: (body['partySize'] as num?)?.toInt() ?? partySize,
       stopCount: (body['stopCount'] as num?)?.toInt() ?? stopOfferIds.length,
+      mobilePayUrl: body['mobilePayUrl'] as String?,
     );
   }
 
@@ -367,8 +371,13 @@ class CustomerPortalApi {
     );
   }
 
-  Future<({String clientSecret, String paymentIntentId, double amount})>
-      createVibeShareIntent({
+  Future<
+      ({
+        String clientSecret,
+        String paymentIntentId,
+        double amount,
+        String? mobilePayUrl,
+      })> createVibeShareIntent({
     required String groupId,
     required String shareId,
   }) async {
@@ -400,6 +409,7 @@ class CustomerPortalApi {
       clientSecret: secret,
       paymentIntentId: pi,
       amount: _toDouble(body['amount']),
+      mobilePayUrl: body['mobilePayUrl'] as String?,
     );
   }
 

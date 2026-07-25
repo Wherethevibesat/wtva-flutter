@@ -55,6 +55,7 @@ class NightPackageCheckoutService {
       context,
       clientSecret: intent.clientSecret,
       amountLabel: _money(intent.amount),
+      mobilePayUrl: intent.mobilePayUrl,
     );
 
     await _api.confirmNightPackagePayment(intent.paymentIntentId);
@@ -144,6 +145,7 @@ class NightPackageCheckoutService {
       context,
       clientSecret: intent.clientSecret,
       amountLabel: _money(intent.amount > 0 ? intent.amount : amount),
+      mobilePayUrl: intent.mobilePayUrl,
     );
 
     stage('Confirming…');
