@@ -16,6 +16,7 @@ import 'concierge_sheet.dart';
 import 'event_detail_screen.dart';
 import 'events_browse_screen.dart';
 import 'more_screen.dart';
+import 'night_package_detail_screen.dart';
 import 'night_packages_browse_screen.dart';
 import 'search_screen.dart';
 import 'tip_night_sheet.dart';
@@ -212,10 +213,30 @@ class _TonightScreenState extends State<TonightScreen> {
                   builder: (_) => const NightPackagesBrowseScreen(),
                 ),
               ),
-              onVibeTap: (_) => Navigator.push(
+              onOccasionTap: (key, match) {
+                if (match != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          NightPackageDetailScreen(packageId: match.pathId),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        NightPackagesBrowseScreen(occasionKey: key),
+                  ),
+                );
+              },
+              onPackageTap: (pkg) => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const NightPackagesBrowseScreen(),
+                  builder: (_) =>
+                      NightPackageDetailScreen(packageId: pkg.pathId),
                 ),
               ),
             ),

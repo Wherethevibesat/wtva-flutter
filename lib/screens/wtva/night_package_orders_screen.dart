@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/night_packages_repository.dart';
 import '../../theme/figma_theme.dart';
+import '../../utils/vibe_copy.dart';
 
 class NightPackageOrdersScreen extends StatefulWidget {
   const NightPackageOrdersScreen({super.key});
@@ -24,6 +25,21 @@ class _NightPackageOrdersScreenState extends State<NightPackageOrdersScreen> {
     return '\$${dollars.toStringAsFixed(dollars.truncateToDouble() == dollars ? 0 : 2)}';
   }
 
+  String? _formatStartsOn(String? iso) {
+    if (iso == null || !RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(iso)) {
+      return null;
+    }
+    final parts = iso.split('-');
+    final month = int.parse(parts[1]);
+    final day = int.parse(parts[2]);
+    final year = int.parse(parts[0]);
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${months[month - 1]} $day, $year';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,7 +47,7 @@ class _NightPackageOrdersScreenState extends State<NightPackageOrdersScreen> {
       appBar: AppBar(
         backgroundColor: WtvaColors.dark500,
         foregroundColor: WtvaColors.neutral50,
-        title: const Text('Your nights'),
+        title: const Text(VibeCopy.myPlans),
       ),
       body: FutureBuilder<List<NightPackageOrderRecord>>(
         future: _future,
@@ -41,10 +57,37 @@ class _NightPackageOrdersScreenState extends State<NightPackageOrdersScreen> {
           }
           final orders = snapshot.data ?? const [];
           if (orders.isEmpty) {
-            return const Center(
-              child: Text(
-                'No booked nights yet.',
-                style: TextStyle(color: WtvaColors.neutral300),
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'No plans yet.',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: WtvaColors.neutral50,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Browse curated vibes to book your night.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: WtvaColors.neutral300),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Itinerary, confirmation, and per-stop codes.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: WtvaColors.neutral300,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }
@@ -61,6 +104,7 @@ class _NightPackageOrdersScreenState extends State<NightPackageOrdersScreen> {
               separatorBuilder: (_, __) => const SizedBox(height: 16),
               itemBuilder: (context, index) {
                 final order = orders[index];
+                final startsLabel = _formatStartsOn(order.startsOn);
                 return Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -74,7 +118,7 @@ class _NightPackageOrdersScreenState extends State<NightPackageOrdersScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'YOUR NIGHT',
+                        'YOUR VIBE',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -93,7 +137,12 @@ class _NightPackageOrdersScreenState extends State<NightPackageOrdersScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Code ${order.confirmationCode} · ${order.partySize} guests · ${_money(order.totalCents)}',
+                        [
+                          if (startsLabel != null) 'Starting $startsLabel',
+                          'Confirmation ${order.confirmationCode}',
+                          '${order.partySize} guests',
+                          _money(order.totalCents),
+                        ].join(' · '),
                         style: const TextStyle(
                           fontSize: 13,
                           color: WtvaColors.neutral300,
@@ -132,8 +181,11 @@ class _NightPackageOrdersScreenState extends State<NightPackageOrdersScreen> {
                                       Expanded(
                                         child: Container(
                                           width: 2,
-                                          margin: const EdgeInsets.symmetric(vertical: 4),
-                                          color: WtvaColors.accentPurple.withValues(alpha: 0.35),
+                                          margin: const EdgeInsets.symmetric(
+                                            vertical: 4,
+                                          ),
+                                          color: WtvaColors.accentPurple
+                                              .withValues(alpha: 0.35),
                                         ),
                                       ),
                                   ],
@@ -141,9 +193,12 @@ class _NightPackageOrdersScreenState extends State<NightPackageOrdersScreen> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Padding(
-                                    padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
+                                    padding: EdgeInsets.only(
+                                      bottom: isLast ? 0 : 16,
+                                    ),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           s.scheduledLabel ?? 'Stop ${i + 1}',

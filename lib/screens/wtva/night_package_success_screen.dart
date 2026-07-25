@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/figma_theme.dart';
+import '../../utils/vibe_copy.dart';
 import 'night_package_orders_screen.dart';
 
 class NightPackageSuccessScreen extends StatelessWidget {
@@ -9,16 +10,21 @@ class NightPackageSuccessScreen extends StatelessWidget {
     required this.amount,
     required this.partySize,
     required this.stopCount,
+    this.startsOnLabel,
   });
 
   final String packageName;
   final double amount;
   final int partySize;
   final int stopCount;
+  final String? startsOnLabel;
 
   @override
   Widget build(BuildContext context) {
-    final money = '\$${amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 2)}';
+    final money =
+        '\$${amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 2)}';
+    final when = startsOnLabel != null ? ' for $startsOnLabel' : '';
+
     return Scaffold(
       backgroundColor: WtvaColors.dark500,
       appBar: AppBar(
@@ -30,10 +36,14 @@ class NightPackageSuccessScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
         child: Column(
           children: [
-            const Icon(Icons.check_circle, size: 64, color: WtvaColors.accentGreen),
+            const Icon(
+              Icons.check_circle,
+              size: 64,
+              color: WtvaColors.accentGreen,
+            ),
             const SizedBox(height: 16),
             const Text(
-              "You're all set",
+              VibeCopy.bookedTitle,
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
@@ -41,8 +51,17 @@ class NightPackageSuccessScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
+            const Text(
+              "You're done",
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: WtvaColors.neutral200,
+              ),
+            ),
+            const SizedBox(height: 8),
             Text(
-              '$packageName is confirmed · $stopCount stops · $partySize guests · $money',
+              '$packageName is booked$when. Open your plan for per-stop codes. · $stopCount experiences · $partySize guests · $money',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 14,
@@ -71,7 +90,7 @@ class NightPackageSuccessScreen extends StatelessWidget {
                   ),
                 ),
                 child: const Text(
-                  'View your night',
+                  'View My Plans',
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
@@ -79,7 +98,7 @@ class NightPackageSuccessScreen extends StatelessWidget {
             const SizedBox(height: 10),
             TextButton(
               onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
-              child: const Text('Back to Plan'),
+              child: const Text('Back to vibe'),
             ),
           ],
         ),

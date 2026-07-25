@@ -1,16 +1,14 @@
-import 'package:flutter_stripe/flutter_stripe.dart';
-
-import '../config/app_brand.dart';
 import '../data/ticket_tier.dart';
 import '../services/customer_portal_api.dart';
-import '../services/stripe_settings_repository.dart';
+import '../services/stripe_bootstrap.dart';
+import '../services/supabase_bootstrap.dart';
 
 class EventTicketCheckoutService {
   EventTicketCheckoutService._();
-  static final EventTicketCheckoutService instance = EventTicketCheckoutService._();
+  static final EventTicketCheckoutService instance =
+      EventTicketCheckoutService._();
 
   final _api = CustomerPortalApi.instance;
-  final _stripeSettings = StripeSettingsRepository.instance;
 
   Future<void> freeRsvp({
     required String eventId,
@@ -30,40 +28,23 @@ class EventTicketCheckoutService {
       throw StateError('Use Free RSVP for this tier');
     }
 
-    final publishableKey = await _stripeSettings.fetchPublishableKey();
-    if (publishableKey == null || publishableKey.isEmpty) {
-      throw StateError('Ticket sales are not available yet.');
+    final token =
+        SupabaseBootstrap.client?.auth.currentSession?.accessToken ?? '';
+    if (token.isEmpty) {
+      throw StateError('Sign in to continue.');
     }
-    await _ensureStripe(publishableKey);
+
+    await StripeBootstrap.ensureReady();
 
     final intent = await _api.createEventTicketIntent(
       eventId: eventId,
       tierId: tier.id,
     );
 
-    await Stripe.instance.initPaymentSheet(
-      paymentSheetParameters: SetupPaymentSheetParameters(
-        paymentIntentClientSecret: intent.clientSecret,
-        merchantDisplayName: AppBrand.name,
-      ),
+    await StripeBootstrap.presentPaymentSheet(
+      clientSecret: intent.clientSecret,
     );
 
-    try {
-      await Stripe.instance.presentPaymentSheet();
-    } on StripeException catch (e) {
-      if (e.error.code == FailureCode.Canceled) {
-        throw StateError('Payment cancelled');
-      }
-      throw StateError(e.error.localizedMessage ?? 'Payment failed');
-    }
-
     await _api.confirmEventTicketPayment(intent.paymentIntentId);
-  }
-
-  Future<void> _ensureStripe(String publishableKey) async {
-    if (Stripe.publishableKey != publishableKey) {
-      Stripe.publishableKey = publishableKey;
-      await Stripe.instance.applySettings();
-    }
   }
 }

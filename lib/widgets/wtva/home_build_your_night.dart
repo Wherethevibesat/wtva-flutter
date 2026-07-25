@@ -1,23 +1,32 @@
 import 'package:flutter/material.dart';
+import '../../services/night_packages_repository.dart';
 import '../../theme/figma_theme.dart';
+import '../../utils/vibe_copy.dart';
 
 const _bynSteps = <({IconData icon, String label})>[
-  (icon: Icons.auto_awesome_outlined, label: 'Choose a vibe or start from scratch.'),
-  (icon: Icons.celebration_outlined, label: 'Add experiences (venues, events, tables).'),
-  (icon: Icons.checklist_rtl_rounded, label: 'Review your plan & total.'),
-  (icon: Icons.credit_card_rounded, label: 'Checkout — one payment.'),
-  (icon: Icons.check_circle_outline_rounded, label: 'Show up & enjoy.'),
+  (
+    icon: Icons.auto_awesome_outlined,
+    label: 'Choose a curated vibe or start from scratch.',
+  ),
+  (
+    icon: Icons.celebration_outlined,
+    label: 'Add experiences (places, events, tables).',
+  ),
+  (
+    icon: Icons.checklist_rtl_rounded,
+    label: 'Review your plan & total.',
+  ),
+  (
+    icon: Icons.credit_card_rounded,
+    label: 'Checkout — one payment.',
+  ),
+  (
+    icon: Icons.check_circle_outline_rounded,
+    label: 'Show up & enjoy.',
+  ),
 ];
 
-const _planVibes = <({IconData icon, String title, Color overlay})>[
-  (icon: Icons.favorite_rounded, title: 'Date Night', overlay: Color(0xCC881337)),
-  (icon: Icons.groups_rounded, title: 'Girls Night Out', overlay: Color(0xCC3B0764)),
-  (icon: Icons.cake_rounded, title: 'Birthday Celebration', overlay: Color(0xCC78350F)),
-  (icon: Icons.flight_takeoff_rounded, title: 'Out of Town Weekend', overlay: Color(0xCC0F172A)),
-  (icon: Icons.diamond_rounded, title: 'Luxury Experience', overlay: Color(0xCC1E1B4B)),
-];
-
-/// Steps card matching the web hero “Build Your Night” widget.
+/// Steps card matching the web hero “Build My Vibe” widget.
 class HomeBuildYourNightCard extends StatelessWidget {
   const HomeBuildYourNightCard({super.key, required this.onBuild});
 
@@ -37,7 +46,7 @@ class HomeBuildYourNightCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Build Your Night',
+            VibeCopy.buildMyVibe,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -54,11 +63,16 @@ class HomeBuildYourNightCard extends StatelessWidget {
                   Container(
                     width: 32,
                     height: 32,
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: WtvaColors.accentPurple.withValues(alpha: 0.12),
+                      color: WtvaColors.accentPurple.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(step.icon, size: 16, color: WtvaColors.accentPurple),
+                    child: Icon(
+                      step.icon,
+                      size: 18,
+                      color: WtvaColors.accentPurple,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -99,7 +113,7 @@ class HomeBuildYourNightCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'Build My Night',
+                          VibeCopy.buildMyVibe,
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
@@ -107,7 +121,8 @@ class HomeBuildYourNightCard extends StatelessWidget {
                           ),
                         ),
                         SizedBox(width: 6),
-                        Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+                        Icon(Icons.arrow_forward_rounded,
+                            color: Colors.white, size: 18),
                       ],
                     ),
                   ),
@@ -121,15 +136,66 @@ class HomeBuildYourNightCard extends StatelessWidget {
   }
 }
 
-/// “Plan your night. Your way.” vibe cards → packages.
-class HomePlanYourNightSection extends StatelessWidget {
-  const HomePlanYourNightSection({super.key, required this.onSeeAll, required this.onVibeTap});
+/// Pick your vibe / Curated Vibes tabs (matches web `home-vibe-tabs`).
+class HomePlanYourNightSection extends StatefulWidget {
+  const HomePlanYourNightSection({
+    super.key,
+    required this.onSeeAll,
+    required this.onOccasionTap,
+    required this.onPackageTap,
+  });
 
   final VoidCallback onSeeAll;
-  final ValueChanged<String> onVibeTap;
+  /// Occasion key + optional matching package pathId for deep-link.
+  final void Function(String occasionKey, NightPackageRecord? match) onOccasionTap;
+  final ValueChanged<NightPackageRecord> onPackageTap;
+
+  @override
+  State<HomePlanYourNightSection> createState() =>
+      _HomePlanYourNightSectionState();
+}
+
+class _HomePlanYourNightSectionState extends State<HomePlanYourNightSection> {
+  int _tab = 0; // 0 pick, 1 curated
+  late Future<List<NightPackageRecord>> _packages;
+
+  @override
+  void initState() {
+    super.initState();
+    _packages = NightPackagesRepository.instance.listPublished(limit: 40);
+  }
+
+  NightPackageRecord? _matchOccasion(
+    List<NightPackageRecord> packages,
+    String key,
+  ) {
+    for (final p in packages) {
+      if (matchesOccasionVibe(
+        vibeKey: key,
+        templateKey: p.templateKey,
+        title: p.title,
+        slug: p.slug,
+        vibeTags: p.vibeTags,
+      )) {
+        return p;
+      }
+    }
+    return null;
+  }
+
+  List<NightPackageRecord> _curatedShow(List<NightPackageRecord> packages) {
+    final featured = packages.where((p) => p.isFeatured).toList();
+    final source = featured.isNotEmpty ? featured : packages;
+    return source.take(5).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final title = _tab == 0 ? VibeCopy.pickYourVibe : VibeCopy.curatedTitle;
+    final subtitle = _tab == 0
+        ? VibeCopy.pickYourVibeSubtitle
+        : 'Designed by our concierge — brunch to late night, and everything between.';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -138,22 +204,22 @@ class HomePlanYourNightSection extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Plan your night. Your way.',
-                      style: TextStyle(
+                      title,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: WtvaColors.neutral50,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      'Pick a vibe or let our concierge build it for you.',
-                      style: TextStyle(
+                      subtitle,
+                      style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: WtvaColors.neutral300,
@@ -163,7 +229,7 @@ class HomePlanYourNightSection extends StatelessWidget {
                 ),
               ),
               TextButton(
-                onPressed: onSeeAll,
+                onPressed: widget.onSeeAll,
                 style: TextButton.styleFrom(
                   foregroundColor: WtvaColors.accentPurple,
                   padding: EdgeInsets.zero,
@@ -171,7 +237,7 @@ class HomePlanYourNightSection extends StatelessWidget {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: const Text(
-                  'See all',
+                  '${VibeCopy.seeAllVibes} →',
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
@@ -179,40 +245,146 @@ class HomePlanYourNightSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
-        SizedBox(
-          height: 168,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            itemCount: _planVibes.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, i) {
-              final vibe = _planVibes[i];
-              return _PlanVibeCard(
-                title: vibe.title,
-                icon: vibe.icon,
-                overlay: vibe.overlay,
-                onTap: () => onVibeTap(vibe.title),
-              );
-            },
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: WtvaColors.dark400,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: WtvaColors.night200),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _VibeTabChip(
+                    label: VibeCopy.pickYourVibe,
+                    selected: _tab == 0,
+                    onTap: () => setState(() => _tab = 0),
+                  ),
+                ),
+                Expanded(
+                  child: _VibeTabChip(
+                    label: VibeCopy.curatedTitle,
+                    selected: _tab == 1,
+                    onTap: () => setState(() => _tab = 1),
+                  ),
+                ),
+              ],
+            ),
           ),
+        ),
+        const SizedBox(height: 14),
+        FutureBuilder<List<NightPackageRecord>>(
+          future: _packages,
+          builder: (context, snapshot) {
+            final packages = snapshot.data ?? const [];
+            if (_tab == 0) {
+              return SizedBox(
+                height: 200,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: occasionVibes.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, i) {
+                    final vibe = occasionVibes[i];
+                    final match = _matchOccasion(packages, vibe.key);
+                    return _OccasionPhotoCard(
+                      vibe: vibe,
+                      onTap: () => widget.onOccasionTap(vibe.key, match),
+                    );
+                  },
+                ),
+              );
+            }
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 220,
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              );
+            }
+
+            final show = _curatedShow(packages);
+            if (show.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  VibeCopy.emptyBrowse,
+                  style: TextStyle(color: WtvaColors.neutral300, fontSize: 13),
+                ),
+              );
+            }
+
+            return SizedBox(
+              height: 280,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                scrollDirection: Axis.horizontal,
+                itemCount: show.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, i) {
+                  final pkg = show[i];
+                  return _CuratedPhotoCard(
+                    package: pkg,
+                    onTap: () => widget.onPackageTap(pkg),
+                  );
+                },
+              ),
+            );
+          },
         ),
       ],
     );
   }
 }
 
-class _PlanVibeCard extends StatelessWidget {
-  const _PlanVibeCard({
-    required this.title,
-    required this.icon,
-    required this.overlay,
+class _VibeTabChip extends StatelessWidget {
+  const _VibeTabChip({
+    required this.label,
+    required this.selected,
     required this.onTap,
   });
 
-  final String title;
-  final IconData icon;
-  final Color overlay;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: selected ? WtvaColors.buttonGradient : null,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: selected ? Colors.white : WtvaColors.neutral300,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OccasionPhotoCard extends StatelessWidget {
+  const _OccasionPhotoCard({required this.vibe, required this.onTap});
+
+  final OccasionVibe vibe;
   final VoidCallback onTap;
 
   @override
@@ -223,44 +395,187 @@ class _PlanVibeCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: Ink(
-          width: 132,
+          width: 140,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: WtvaColors.night200),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                overlay.withValues(alpha: 0.85),
-                WtvaColors.accentPurple.withValues(alpha: 0.55),
-                const Color(0xFF4A044E),
-              ],
-            ),
             boxShadow: WtvaColors.cardShadow,
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    gradient: WtvaColors.buttonGradient,
-                    shape: BoxShape.circle,
-                    boxShadow: WtvaColors.buttonShadow,
-                  ),
-                  child: Icon(icon, color: Colors.white, size: 18),
+                Image.network(
+                  vibePlaceholderImage,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      Container(color: WtvaColors.dark500),
                 ),
-                const Spacer(),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    height: 1.2,
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [vibe.overlayTop, vibe.overlayBottom],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 12,
+                  right: 12,
+                  bottom: 12,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          gradient: WtvaColors.buttonGradient,
+                          shape: BoxShape.circle,
+                          boxShadow: WtvaColors.buttonShadow,
+                        ),
+                        child: Icon(vibe.icon, color: Colors.white, size: 16),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          vibe.title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            height: 1.2,
+                            shadows: [
+                              Shadow(blurRadius: 6, color: Colors.black54),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CuratedPhotoCard extends StatelessWidget {
+  const _CuratedPhotoCard({required this.package, required this.onTap});
+
+  final NightPackageRecord package;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          width: 220,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: WtvaColors.night200),
+            boxShadow: WtvaColors.cardShadow,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.network(
+                  vibeImageUrl(package.imageUrl),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      Container(color: WtvaColors.dark500),
+                ),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Color(0x40000000),
+                        Color(0xCC000000),
+                      ],
+                    ),
+                  ),
+                ),
+                if (package.isFeatured)
+                  Positioned(
+                    left: 12,
+                    top: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: WtvaColors.buttonGradient,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text(
+                        VibeCopy.featuredBadge,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
+                  ),
+                Positioned(
+                  left: 14,
+                  right: 14,
+                  bottom: 14,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        package.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 17,
+                          shadows: [
+                            Shadow(blurRadius: 8, color: Colors.black54),
+                          ],
+                        ),
+                      ),
+                      if (package.displayTagline.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          package.displayTagline,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.88),
+                            fontSize: 12,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      const Text(
+                        '${VibeCopy.viewVibe} →',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -338,33 +653,6 @@ class HomeConciergeBannerCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: WtvaColors.dark500,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: WtvaColors.night200),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: _ChatBubble(
-                      text: 'I’m in town this weekend — plan something fun.',
-                      mine: true,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  _ChatBubble(
-                    text: 'Perfect — I’ve put together a weekend flow for you.',
-                    mine: false,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
               child: DecoratedBox(
@@ -396,41 +684,6 @@ class HomeConciergeBannerCard extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ChatBubble extends StatelessWidget {
-  const _ChatBubble({required this.text, required this.mine});
-
-  final String text;
-  final bool mine;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 260),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: mine ? WtvaColors.dark400 : null,
-        gradient: mine ? null : WtvaColors.buttonGradient,
-        borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(14),
-          topRight: const Radius.circular(14),
-          bottomLeft: Radius.circular(mine ? 14 : 4),
-          bottomRight: Radius.circular(mine ? 4 : 14),
-        ),
-        border: mine ? Border.all(color: WtvaColors.night200) : null,
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: mine ? WtvaColors.neutral50 : Colors.white,
-          height: 1.3,
         ),
       ),
     );

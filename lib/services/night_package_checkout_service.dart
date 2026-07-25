@@ -1,8 +1,6 @@
-import 'package:flutter_stripe/flutter_stripe.dart';
-
-import '../config/app_brand.dart';
 import '../services/customer_portal_api.dart';
-import '../services/stripe_settings_repository.dart';
+import '../services/stripe_bootstrap.dart';
+import '../services/supabase_bootstrap.dart';
 
 class NightPackageCheckoutService {
   NightPackageCheckoutService._();
@@ -10,53 +8,111 @@ class NightPackageCheckoutService {
       NightPackageCheckoutService._();
 
   final _api = CustomerPortalApi.instance;
-  final _stripeSettings = StripeSettingsRepository.instance;
 
   Future<NightPackagePaymentIntent> purchase({
     required String packageId,
     required int partySize,
     required List<String> stopOfferIds,
+    required String startsOn,
   }) async {
     if (stopOfferIds.isEmpty) {
-      throw StateError('Add at least one stop to your plan');
+      throw StateError('Add at least one stop to your vibe');
+    }
+    if (startsOn.isEmpty) {
+      throw StateError('Pick a start date for your vibe');
     }
 
-    final publishableKey = await _stripeSettings.fetchPublishableKey();
-    if (publishableKey == null || publishableKey.isEmpty) {
-      throw StateError('Checkout is not available yet.');
+    final token =
+        SupabaseBootstrap.client?.auth.currentSession?.accessToken ?? '';
+    if (token.isEmpty) {
+      throw StateError('Sign in to continue.');
     }
-    await _ensureStripe(publishableKey);
+
+    await StripeBootstrap.ensureReady();
 
     final intent = await _api.createNightPackageIntent(
       packageId: packageId,
       partySize: partySize,
       stopOfferIds: stopOfferIds,
+      startsOn: startsOn,
     );
 
-    await Stripe.instance.initPaymentSheet(
-      paymentSheetParameters: SetupPaymentSheetParameters(
-        paymentIntentClientSecret: intent.clientSecret,
-        merchantDisplayName: AppBrand.name,
-      ),
+    await StripeBootstrap.presentPaymentSheet(
+      clientSecret: intent.clientSecret,
     );
-
-    try {
-      await Stripe.instance.presentPaymentSheet();
-    } on StripeException catch (e) {
-      if (e.error.code == FailureCode.Canceled) {
-        throw StateError('Payment cancelled');
-      }
-      throw StateError(e.error.localizedMessage ?? 'Payment failed');
-    }
 
     await _api.confirmNightPackagePayment(intent.paymentIntentId);
     return intent;
   }
 
-  Future<void> _ensureStripe(String publishableKey) async {
-    if (Stripe.publishableKey != publishableKey) {
-      Stripe.publishableKey = publishableKey;
-      await Stripe.instance.applySettings();
+  /// Host creates a split group, pays their share, returns invite details.
+  Future<({VibeSplitGroupCreated group, String status})> startSplitAndPayHost({
+    required String packageId,
+    required int partySize,
+    required List<String> stopOfferIds,
+    required String startsOn,
+    required int payerCount,
+  }) async {
+    if (stopOfferIds.isEmpty) {
+      throw StateError('Add at least one stop to your vibe');
     }
+    if (startsOn.isEmpty) {
+      throw StateError('Pick a start date for your vibe');
+    }
+    if (payerCount < 2) {
+      throw StateError('Split needs at least 2 people');
+    }
+
+    final token =
+        SupabaseBootstrap.client?.auth.currentSession?.accessToken ?? '';
+    if (token.isEmpty) {
+      throw StateError('Sign in to continue.');
+    }
+
+    await StripeBootstrap.ensureReady();
+
+    final group = await _api.createVibeSplitGroup(
+      packageId: packageId,
+      partySize: partySize,
+      stopOfferIds: stopOfferIds,
+      startsOn: startsOn,
+      payerCount: payerCount,
+    );
+
+    final intent = await _api.createVibeShareIntent(
+      groupId: group.groupId,
+      shareId: group.hostShareId,
+    );
+
+    await StripeBootstrap.presentPaymentSheet(
+      clientSecret: intent.clientSecret,
+    );
+
+    final status = await _api.confirmVibeSharePayment(intent.paymentIntentId);
+    return (group: group, status: status);
+  }
+
+  Future<String> payShare({
+    required String groupId,
+    required String shareId,
+  }) async {
+    final token =
+        SupabaseBootstrap.client?.auth.currentSession?.accessToken ?? '';
+    if (token.isEmpty) {
+      throw StateError('Sign in to continue.');
+    }
+
+    await StripeBootstrap.ensureReady();
+
+    final intent = await _api.createVibeShareIntent(
+      groupId: groupId,
+      shareId: shareId,
+    );
+
+    await StripeBootstrap.presentPaymentSheet(
+      clientSecret: intent.clientSecret,
+    );
+
+    return _api.confirmVibeSharePayment(intent.paymentIntentId);
   }
 }

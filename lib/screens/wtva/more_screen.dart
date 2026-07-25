@@ -42,8 +42,8 @@ class MoreScreen extends StatelessWidget {
           ],
           _MenuTile(
             icon: Icons.nightlife_outlined,
-            title: 'Build Your Night',
-            subtitle: 'Curated multi-venue packages',
+            title: 'Curated Vibes',
+            subtitle: 'Build and book your night out',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const NightPackagesBrowseScreen()),

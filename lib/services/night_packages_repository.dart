@@ -12,11 +12,14 @@ class NightPackageStopRecord {
     required this.priceCents,
     required this.inclusions,
     this.arrivalWindow,
+    this.venueId,
     this.venueName,
+    this.whyPicked = '',
+    this.durationLabel,
+    this.dressCode,
   });
 
   final String id;
-  /// `package_stop_offers.id` used for swap/add checkout.
   final String offerId;
   final int sortOrder;
   final String? scheduledLabel;
@@ -25,7 +28,11 @@ class NightPackageStopRecord {
   final int priceCents;
   final List<String> inclusions;
   final String? arrivalWindow;
+  final String? venueId;
   final String? venueName;
+  final String whyPicked;
+  final String? durationLabel;
+  final String? dressCode;
 }
 
 class NightPackageRecord {
@@ -35,11 +42,14 @@ class NightPackageRecord {
     required this.title,
     required this.subtitle,
     required this.description,
+    this.tagline = '',
     this.imageUrl,
     required this.city,
     required this.partySizeMin,
     required this.partySizeMax,
     required this.isFeatured,
+    this.templateKey,
+    this.vibeTags = const [],
     required this.stops,
   });
 
@@ -48,17 +58,22 @@ class NightPackageRecord {
   final String title;
   final String subtitle;
   final String description;
+  final String tagline;
   final String? imageUrl;
   final String city;
   final int partySizeMin;
   final int partySizeMax;
   final bool isFeatured;
+  final String? templateKey;
+  final List<String> vibeTags;
   final List<NightPackageStopRecord> stops;
 
-  int get subtotalCents =>
-      stops.fold(0, (sum, s) => sum + s.priceCents);
+  int get subtotalCents => stops.fold(0, (sum, s) => sum + s.priceCents);
 
   String get pathId => (slug != null && slug!.isNotEmpty) ? slug! : id;
+
+  String get displayTagline =>
+      tagline.trim().isNotEmpty ? tagline.trim() : subtitle;
 }
 
 class ApprovedStopOfferRecord {
@@ -68,8 +83,11 @@ class ApprovedStopOfferRecord {
     required this.slotType,
     required this.priceCents,
     this.arrivalWindow,
+    this.venueId,
     this.venueName,
     this.description = '',
+    this.whyPicked = '',
+    this.scheduledLabel,
   });
 
   final String id;
@@ -77,8 +95,11 @@ class ApprovedStopOfferRecord {
   final String slotType;
   final int priceCents;
   final String? arrivalWindow;
+  final String? venueId;
   final String? venueName;
   final String description;
+  final String whyPicked;
+  final String? scheduledLabel;
 }
 
 class NightPackageOrderStopRecord {
@@ -107,6 +128,7 @@ class NightPackageOrderRecord {
     required this.partySize,
     required this.totalCents,
     required this.status,
+    this.startsOn,
     required this.stops,
   });
 
@@ -116,23 +138,26 @@ class NightPackageOrderRecord {
   final int partySize;
   final int totalCents;
   final String status;
+  final String? startsOn;
   final List<NightPackageOrderStopRecord> stops;
 }
 
-/// Published Build Your Night packages from Supabase.
+/// Published Curated Vibes from Supabase (`night_packages`).
 class NightPackagesRepository {
   NightPackagesRepository._();
   static final NightPackagesRepository instance = NightPackagesRepository._();
 
   static const _select = '''
-    id, slug, title, subtitle, description, image_url, city,
+    id, slug, title, subtitle, description, tagline, image_url, city,
     party_size_min, party_size_max, is_featured, sort_order,
+    template_key, vibe_tags,
     stops:night_package_stops(
       id, sort_order, scheduled_label,
       stop_offer:package_stop_offers(
         id, title, slot_type, price_cents, inclusions, arrival_window,
+        why_picked, duration_label, dress_code,
         status, is_active,
-        venue:venues(name)
+        venue:venues(id, name)
       )
     )
   ''';
@@ -157,7 +182,32 @@ class NightPackagesRepository {
           .where((p) => p.stops.isNotEmpty)
           .toList();
     } catch (_) {
-      return const [];
+      // Fallback if storytelling columns not migrated yet.
+      try {
+        final rows = await client
+            .from('night_packages')
+            .select('''
+              id, slug, title, subtitle, description, image_url, city,
+              party_size_min, party_size_max, is_featured, sort_order,
+              stops:night_package_stops(
+                id, sort_order, scheduled_label,
+                stop_offer:package_stop_offers(
+                  id, title, slot_type, price_cents, inclusions, arrival_window,
+                  status, is_active, venue:venues(id, name)
+                )
+              )
+            ''')
+            .eq('status', 'published')
+            .order('sort_order')
+            .limit(limit);
+        return (rows as List)
+            .cast<Map<String, dynamic>>()
+            .map(_fromRow)
+            .where((p) => p.stops.isNotEmpty)
+            .toList();
+      } catch (_) {
+        return const [];
+      }
     }
   }
 
@@ -174,7 +224,8 @@ class NightPackagesRepository {
         caseSensitive: false,
       ).hasMatch(idOrSlug);
 
-      var query = client.from('night_packages').select(_select).eq('status', 'published');
+      var query =
+          client.from('night_packages').select(_select).eq('status', 'published');
       query = uuid ? query.eq('id', idOrSlug) : query.eq('slug', idOrSlug);
 
       final row = await query.maybeSingle();
@@ -215,7 +266,7 @@ class NightPackagesRepository {
       final rows = await client
           .from('night_package_orders')
           .select('''
-            id, confirmation_code, party_size, total_cents, status,
+            id, confirmation_code, party_size, starts_on, total_cents, status,
             package:night_packages(title),
             stops:night_package_order_stops(
               title, redemption_code, scheduled_label, sort_order,
@@ -227,8 +278,8 @@ class NightPackagesRepository {
       return (rows as List).cast<Map<String, dynamic>>().map((row) {
         final pkgRaw = row['package'];
         final packageTitle = pkgRaw is Map
-            ? (pkgRaw['title'] as String? ?? 'Night package')
-            : 'Night package';
+            ? (pkgRaw['title'] as String? ?? 'Your vibe')
+            : 'Your vibe';
         final stopRows = (row['stops'] as List?) ?? const [];
         final stops = stopRows.cast<Map<String, dynamic>>().map((s) {
           final venueRaw = s['venue'];
@@ -251,11 +302,58 @@ class NightPackagesRepository {
           partySize: (row['party_size'] as num?)?.toInt() ?? 1,
           totalCents: (row['total_cents'] as num?)?.toInt() ?? 0,
           status: row['status'] as String? ?? 'paid',
+          startsOn: row['starts_on'] as String?,
           stops: stops,
         );
       }).toList();
     } catch (_) {
-      return const [];
+      // starts_on may be missing pre-migration
+      try {
+        final rows = await client
+            .from('night_package_orders')
+            .select('''
+              id, confirmation_code, party_size, total_cents, status,
+              package:night_packages(title),
+              stops:night_package_order_stops(
+                title, redemption_code, scheduled_label, sort_order,
+                line_total_cents, venue:venues(name)
+              )
+            ''')
+            .eq('user_id', userId)
+            .order('created_at', ascending: false);
+        return (rows as List).cast<Map<String, dynamic>>().map((row) {
+          final pkgRaw = row['package'];
+          final packageTitle = pkgRaw is Map
+              ? (pkgRaw['title'] as String? ?? 'Your vibe')
+              : 'Your vibe';
+          final stopRows = (row['stops'] as List?) ?? const [];
+          final stops = stopRows.cast<Map<String, dynamic>>().map((s) {
+            final venueRaw = s['venue'];
+            final venueName =
+                venueRaw is Map ? venueRaw['name'] as String? : null;
+            return NightPackageOrderStopRecord(
+              title: s['title'] as String? ?? 'Stop',
+              redemptionCode: s['redemption_code'] as String? ?? '',
+              scheduledLabel: s['scheduled_label'] as String?,
+              venueName: venueName,
+              lineTotalCents: (s['line_total_cents'] as num?)?.toInt(),
+              sortOrder: (s['sort_order'] as num?)?.toInt() ?? 0,
+            );
+          }).toList()
+            ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+          return NightPackageOrderRecord(
+            id: row['id'] as String,
+            confirmationCode: row['confirmation_code'] as String? ?? '',
+            packageTitle: packageTitle,
+            partySize: (row['party_size'] as num?)?.toInt() ?? 1,
+            totalCents: (row['total_cents'] as num?)?.toInt() ?? 0,
+            status: row['status'] as String? ?? 'paid',
+            stops: stops,
+          );
+        }).toList();
+      } catch (_) {
+        return const [];
+      }
     }
   }
 
@@ -270,13 +368,9 @@ class NightPackagesRepository {
     if (client == null) return const [];
 
     try {
-      var query = client
-          .from('package_stop_offers')
-          .select(
-            'id, title, description, slot_type, price_cents, arrival_window, venue:venues(name)',
-          )
-          .eq('status', 'approved')
-          .eq('is_active', true);
+      var query = client.from('package_stop_offers').select(
+            'id, title, description, slot_type, price_cents, arrival_window, why_picked, venue:venues(id, name)',
+          ).eq('status', 'approved').eq('is_active', true);
 
       if (slotType != null && slotType.isNotEmpty) {
         query = query.eq('slot_type', slotType);
@@ -289,6 +383,8 @@ class NightPackagesRepository {
           .where((row) => !exclude.contains(row['id']))
           .map((row) {
             final venueRaw = row['venue'];
+            final venueId =
+                venueRaw is Map ? venueRaw['id'] as String? : null;
             final venueName =
                 venueRaw is Map ? venueRaw['name'] as String? : null;
             return ApprovedStopOfferRecord(
@@ -298,6 +394,8 @@ class NightPackagesRepository {
               slotType: row['slot_type'] as String? ?? 'other',
               priceCents: (row['price_cents'] as num?)?.toInt() ?? 0,
               arrivalWindow: row['arrival_window'] as String?,
+              whyPicked: row['why_picked'] as String? ?? '',
+              venueId: venueId,
               venueName: venueName,
             );
           })
@@ -305,6 +403,11 @@ class NightPackagesRepository {
     } catch (_) {
       return const [];
     }
+  }
+
+  List<String> _stringList(dynamic v) {
+    if (v is! List) return const [];
+    return v.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
   }
 
   NightPackageRecord _fromRow(Map<String, dynamic> row) {
@@ -315,11 +418,12 @@ class NightPackagesRepository {
       final offerRaw = s['stop_offer'];
       if (offerRaw is! Map) continue;
       final offer = Map<String, dynamic>.from(offerRaw);
-      if (offer['status'] != 'approved' || offer['is_active'] == false) continue;
+      if (offer['status'] != 'approved' || offer['is_active'] == false) {
+        continue;
+      }
       final venueRaw = offer['venue'];
-      final venueName = venueRaw is Map
-          ? venueRaw['name'] as String?
-          : null;
+      final venueId = venueRaw is Map ? venueRaw['id'] as String? : null;
+      final venueName = venueRaw is Map ? venueRaw['name'] as String? : null;
       final inclusions = (offer['inclusions'] as List?)
               ?.map((e) => e.toString())
               .toList() ??
@@ -335,7 +439,11 @@ class NightPackagesRepository {
           priceCents: (offer['price_cents'] as num?)?.toInt() ?? 0,
           inclusions: inclusions,
           arrivalWindow: offer['arrival_window'] as String?,
+          venueId: venueId,
           venueName: venueName,
+          whyPicked: offer['why_picked'] as String? ?? '',
+          durationLabel: offer['duration_label'] as String?,
+          dressCode: offer['dress_code'] as String?,
         ),
       );
     }
@@ -344,14 +452,17 @@ class NightPackagesRepository {
     return NightPackageRecord(
       id: row['id'] as String,
       slug: row['slug'] as String?,
-      title: row['title'] as String? ?? 'Night package',
+      title: row['title'] as String? ?? 'Vibe',
       subtitle: row['subtitle'] as String? ?? '',
       description: row['description'] as String? ?? '',
+      tagline: row['tagline'] as String? ?? '',
       imageUrl: row['image_url'] as String?,
       city: row['city'] as String? ?? 'houston',
       partySizeMin: (row['party_size_min'] as num?)?.toInt() ?? 1,
       partySizeMax: (row['party_size_max'] as num?)?.toInt() ?? 20,
       isFeatured: row['is_featured'] == true,
+      templateKey: row['template_key'] as String?,
+      vibeTags: _stringList(row['vibe_tags']),
       stops: stops,
     );
   }

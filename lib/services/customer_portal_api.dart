@@ -107,6 +107,64 @@ class NightPackagePaymentIntent {
   final int stopCount;
 }
 
+class VibeSplitGroupCreated {
+  const VibeSplitGroupCreated({
+    required this.groupId,
+    required this.inviteToken,
+    required this.inviteUrl,
+    required this.hostShareId,
+    required this.amounts,
+    required this.total,
+  });
+
+  final String groupId;
+  final String inviteToken;
+  final String inviteUrl;
+  final String hostShareId;
+  final List<double> amounts;
+  final double total;
+}
+
+class VibeSplitShare {
+  const VibeSplitShare({
+    required this.id,
+    required this.role,
+    required this.amount,
+    required this.status,
+    this.userId,
+    this.label,
+  });
+
+  final String id;
+  final String role;
+  final double amount;
+  final String status;
+  final String? userId;
+  final String? label;
+}
+
+class VibeSplitGroupStatus {
+  const VibeSplitGroupStatus({
+    required this.id,
+    required this.status,
+    required this.inviteToken,
+    required this.packageTitle,
+    required this.total,
+    required this.paidCount,
+    required this.shares,
+    this.openGuestShareId,
+  });
+
+  final String id;
+  final String status;
+  final String inviteToken;
+  final String packageTitle;
+  final double total;
+  final int paidCount;
+  final String? openGuestShareId;
+  final List<VibeSplitShare> shares;
+}
+
 class CustomerPortalApi {
   CustomerPortalApi._();
   static final CustomerPortalApi instance = CustomerPortalApi._();
@@ -171,19 +229,32 @@ class CustomerPortalApi {
     required String packageId,
     required int partySize,
     required List<String> stopOfferIds,
+    required String startsOn,
   }) async {
-    final res = await http.post(
-      _uri('/api/checkout/night-package/create-intent'),
-      headers: await _headers(),
-      body: jsonEncode({
-        'packageId': packageId,
-        'partySize': partySize,
-        'stopOfferIds': stopOfferIds,
-      }),
-    );
+    late http.Response res;
+    try {
+      res = await http.post(
+        _uri('/api/checkout/night-package/create-intent'),
+        headers: await _headers(),
+        body: jsonEncode({
+          'packageId': packageId,
+          'partySize': partySize,
+          'stopOfferIds': stopOfferIds,
+          'startsOn': startsOn,
+        }),
+      );
+    } catch (e) {
+      throw StateError(
+        'Could not reach checkout (${CustomerPortalConfig.apiBaseUrl}). '
+        'Check your connection and try again.',
+      );
+    }
     final body = _decode(res);
     if (res.statusCode != 200) {
-      throw StateError(body['error'] as String? ?? 'Could not start checkout');
+      throw StateError(
+        body['error'] as String? ??
+            'Could not start checkout (${res.statusCode})',
+      );
     }
     final clientSecret = body['clientSecret'] as String?;
     final paymentIntentId = body['paymentIntentId'] as String?;
@@ -193,25 +264,159 @@ class CustomerPortalApi {
     return NightPackagePaymentIntent(
       clientSecret: clientSecret,
       paymentIntentId: paymentIntentId,
-      packageName: body['packageName'] as String? ?? 'Night package',
+      packageName: body['packageName'] as String? ?? 'Your vibe',
       amount: _toDouble(body['amount']),
       partySize: (body['partySize'] as num?)?.toInt() ?? partySize,
       stopCount: (body['stopCount'] as num?)?.toInt() ?? stopOfferIds.length,
     );
   }
 
-  Future<void> confirmNightPackagePayment(String paymentIntentId) async {
+  Future<VibeSplitGroupCreated> createVibeSplitGroup({
+    required String packageId,
+    required int partySize,
+    required List<String> stopOfferIds,
+    required String startsOn,
+    required int payerCount,
+  }) async {
     final res = await http.post(
-      _uri('/api/checkout/night-package/confirm'),
+      _uri('/api/checkout/night-package/group/create'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'packageId': packageId,
+        'partySize': partySize,
+        'stopOfferIds': stopOfferIds,
+        'startsOn': startsOn,
+        'payerCount': payerCount,
+      }),
+    );
+    final body = _decode(res);
+    if (res.statusCode != 200) {
+      throw StateError(body['error'] as String? ?? 'Could not create split');
+    }
+    return VibeSplitGroupCreated(
+      groupId: body['groupId'] as String,
+      inviteToken: body['inviteToken'] as String? ?? '',
+      inviteUrl: body['inviteUrl'] as String? ?? '',
+      hostShareId: body['hostShareId'] as String,
+      amounts: ((body['amounts'] as List?) ?? const [])
+          .map((e) => (e as num).toDouble())
+          .toList(),
+      total: _toDouble(body['total']),
+    );
+  }
+
+  Future<({String clientSecret, String paymentIntentId, double amount})>
+      createVibeShareIntent({
+    required String groupId,
+    required String shareId,
+  }) async {
+    final res = await http.post(
+      _uri('/api/checkout/night-package/group/pay-share'),
+      headers: await _headers(),
+      body: jsonEncode({'groupId': groupId, 'shareId': shareId}),
+    );
+    final body = _decode(res);
+    if (res.statusCode != 200) {
+      throw StateError(body['error'] as String? ?? 'Could not start share payment');
+    }
+    final secret = body['clientSecret'] as String?;
+    final pi = body['paymentIntentId'] as String?;
+    if (secret == null || pi == null) {
+      throw StateError('Invalid share payment response');
+    }
+    return (
+      clientSecret: secret,
+      paymentIntentId: pi,
+      amount: _toDouble(body['amount']),
+    );
+  }
+
+  Future<String> confirmVibeSharePayment(String paymentIntentId) async {
+    final res = await http.post(
+      _uri('/api/checkout/night-package/group/confirm-share'),
       headers: await _headers(),
       body: jsonEncode({'paymentIntentId': paymentIntentId}),
     );
     final body = _decode(res);
-    if (res.statusCode != 200) {
-      throw StateError(body['error'] as String? ?? 'Payment confirmation failed');
+    if (res.statusCode != 200 && body['status'] != 'pending') {
+      throw StateError(body['error'] as String? ?? 'Share confirm failed');
     }
-    if (body['status'] != 'confirmed') {
-      throw StateError('Payment has not completed yet');
+    return body['status'] as String? ?? 'share_paid';
+  }
+
+  Future<VibeSplitGroupStatus> fetchVibeSplitGroup(String token) async {
+    final res = await http.get(
+      _uri('/api/checkout/night-package/group/$token'),
+      headers: await _headers(),
+    );
+    final body = _decode(res);
+    if (res.statusCode != 200) {
+      throw StateError(body['error'] as String? ?? 'Split not found');
+    }
+    final shares = ((body['shares'] as List?) ?? const [])
+        .cast<Map<String, dynamic>>()
+        .map(
+          (s) => VibeSplitShare(
+            id: s['id'] as String,
+            role: s['role'] as String? ?? 'guest',
+            amount: _toDouble(s['amount']),
+            status: s['status'] as String? ?? 'pending',
+            userId: s['userId'] as String?,
+            label: s['label'] as String?,
+          ),
+        )
+        .toList();
+    return VibeSplitGroupStatus(
+      id: body['id'] as String,
+      status: body['status'] as String? ?? 'collecting',
+      inviteToken: token,
+      packageTitle: body['packageTitle'] as String? ?? 'Your vibe',
+      total: _toDouble(body['total']),
+      paidCount: (body['paidCount'] as num?)?.toInt() ?? 0,
+      openGuestShareId: body['openGuestShareId'] as String?,
+      shares: shares,
+    );
+  }
+
+  /// Confirms fulfillment after PaymentSheet. Retries briefly if Stripe is still pending.
+  Future<void> confirmNightPackagePayment(String paymentIntentId) async {
+    const attempts = 5;
+    for (var i = 0; i < attempts; i++) {
+      late http.Response res;
+      try {
+        res = await http.post(
+          _uri('/api/checkout/night-package/confirm'),
+          headers: await _headers(),
+          body: jsonEncode({'paymentIntentId': paymentIntentId}),
+        );
+      } catch (_) {
+        if (i == attempts - 1) {
+          throw StateError(
+            'Payment went through, but we could not confirm your plan. '
+            'Check My Plans or contact support.',
+          );
+        }
+        await Future<void>.delayed(Duration(milliseconds: 400 * (i + 1)));
+        continue;
+      }
+
+      final body = _decode(res);
+      if (res.statusCode == 200 && body['status'] == 'confirmed') {
+        return;
+      }
+      if (res.statusCode == 200 && body['status'] == 'pending') {
+        if (i == attempts - 1) {
+          throw StateError(
+            'Payment is still processing. Check My Plans in a moment.',
+          );
+        }
+        await Future<void>.delayed(Duration(milliseconds: 500 * (i + 1)));
+        continue;
+      }
+      throw StateError(
+        body['error'] as String? ??
+            'Payment confirmation failed (${res.statusCode})',
+      );
     }
   }
 

@@ -13,7 +13,7 @@ import 'messages_screen.dart';
 import 'tonight_screen.dart';
 import 'night_packages_browse_screen.dart';
 
-/// Main app shell — Home(Dashboard|Tonight) / Events / Check In / Plan / Inbox.
+/// Main app shell — Home(Dashboard|Tonight) / Events / Check In / Vibes / Inbox.
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -22,7 +22,7 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  /// 0 Home, 1 Events, 2 FAB, 3 Plan, 4 Inbox
+  /// 0 Home, 1 Events, 2 FAB, 3 Vibes, 4 Inbox
   int _navIndex = 0;
 
   /// Signed-in Home tab: dashboard by default; flip to Tonight (main feed).

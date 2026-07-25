@@ -100,9 +100,14 @@ class _WtvaLoginScreenState extends State<WtvaLoginScreen> {
       await PushNotificationService.instance.syncForSignedInUser();
       if (!mounted) return;
       setState(() => _isLoading = false);
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const AppShell()),
-      );
+      // Return to caller (e.g. vibe checkout) when opened as a gate; else enter app.
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(true);
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const AppShell()),
+        );
+      }
     } catch (e) {
       setState(() {
         _errorMessage = friendlyAuthError(e);

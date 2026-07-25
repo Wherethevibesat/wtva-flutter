@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../services/night_packages_repository.dart';
 import '../../theme/figma_theme.dart';
+import '../../utils/vibe_copy.dart';
+import '../../widgets/wtva/venue_preview_sheet.dart';
+import '../../widgets/wtva/vibe_flow_steps.dart';
 import 'night_package_plan_screen.dart';
 
+/// Screen 1 — lean mood Preview (matches web `VibePreview`).
 class NightPackageDetailScreen extends StatefulWidget {
   const NightPackageDetailScreen({super.key, required this.packageId});
 
@@ -27,15 +31,7 @@ class _NightPackageDetailScreenState extends State<NightPackageDetailScreen> {
     return '\$${dollars.toStringAsFixed(dollars.truncateToDouble() == dollars ? 0 : 2)}';
   }
 
-  String _slotLabel(String slot) {
-    return slot
-        .replaceAll('_', ' ')
-        .split(' ')
-        .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
-        .join(' ');
-  }
-
-  void _customize(NightPackageRecord pkg) {
+  void _continue(NightPackageRecord pkg) {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => NightPackagePlanScreen(package: pkg)),
@@ -49,7 +45,7 @@ class _NightPackageDetailScreenState extends State<NightPackageDetailScreen> {
       appBar: AppBar(
         backgroundColor: WtvaColors.dark500,
         foregroundColor: WtvaColors.neutral50,
-        title: const Text('Package'),
+        title: const Text('Preview'),
       ),
       body: FutureBuilder<NightPackageRecord?>(
         future: _future,
@@ -61,171 +57,244 @@ class _NightPackageDetailScreenState extends State<NightPackageDetailScreen> {
           if (pkg == null) {
             return const Center(
               child: Text(
-                'Package not found',
+                'Vibe not found',
                 style: TextStyle(color: WtvaColors.neutral300),
               ),
             );
           }
 
-          return Column(
+          final mood = pkg.vibeTags.take(2).join(' · ');
+          final moodLine = mood.isNotEmpty
+              ? mood
+              : (pkg.subtitle.trim().isNotEmpty
+                  ? pkg.subtitle.trim()
+                  : 'Curated going-out vibe');
+          final tagline = pkg.displayTagline.isNotEmpty
+              ? pkg.displayTagline
+              : 'One unforgettable plan — customize, then book.';
+
+          return ListView(
+            padding: const EdgeInsets.only(bottom: 32),
             children: [
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              const VibeFlowSteps(step: 0),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       pkg.title,
                       style: const TextStyle(
-                        fontSize: 24,
+                        fontSize: 22,
                         fontWeight: FontWeight.w800,
                         color: WtvaColors.neutral50,
                       ),
                     ),
-                    if (pkg.subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        pkg.subtitle,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: WtvaColors.neutral300,
-                        ),
+                    const SizedBox(height: 6),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: '✨ $moodLine',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: WtvaColors.accentPurple,
+                              fontSize: 13,
+                            ),
+                          ),
+                          TextSpan(
+                            text: ' · $tagline',
+                            style: const TextStyle(
+                              color: WtvaColors.neutral300,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                    if (pkg.description.isNotEmpty) ...[
+                    ),
+                    if (pkg.imageUrl != null && pkg.imageUrl!.trim().isNotEmpty) ...[
                       const SizedBox(height: 16),
-                      Text(
-                        pkg.description,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          height: 1.45,
-                          color: WtvaColors.neutral200,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-                    Text(
-                      'From ${_money(pkg.subtotalCents)} / person',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: WtvaColors.neutral50,
-                      ),
-                    ),
-                    Text(
-                      'Party size ${pkg.partySizeMin}–${pkg.partySizeMax}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: WtvaColors.neutral300,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Your itinerary',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: WtvaColors.neutral50,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ...pkg.stops.asMap().entries.map((entry) {
-                      final i = entry.key;
-                      final stop = entry.value;
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: WtvaColors.dark400,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: WtvaColors.night200.withValues(alpha: 0.55),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 7,
+                          child: Image.network(
+                            pkg.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                Container(color: WtvaColors.dark400),
                           ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'STOP ${i + 1}${stop.scheduledLabel != null ? ' · ${stop.scheduledLabel}' : ''}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
-                                color: WtvaColors.accentPurple,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              stop.title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: WtvaColors.neutral50,
-                              ),
-                            ),
-                            Text(
-                              '${stop.venueName ?? 'Venue'} · ${_slotLabel(stop.slotType)}'
-                              '${stop.arrivalWindow != null ? ' · ${stop.arrivalWindow}' : ''}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: WtvaColors.neutral300,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              _money(stop.priceCents),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: WtvaColors.neutral100,
-                              ),
-                            ),
-                            if (stop.inclusions.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              ...stop.inclusions.map(
-                                (item) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 2),
-                                  child: Text(
-                                    '• $item',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: WtvaColors.neutral300,
-                                    ),
+                      ),
+                    ],
+                    if (pkg.stops.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _PreviewStopsCard(stops: pkg.stops),
+                    ],
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: WtvaColors.dark400,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: WtvaColors.night200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: _money(pkg.subtotalCents),
+                                  style: const TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w800,
+                                    color: WtvaColors.neutral50,
                                   ),
                                 ),
+                                const TextSpan(
+                                  text: ' / person',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: WtvaColors.neutral300,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${pkg.stops.length} experiences · one checkout',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: WtvaColors.neutral300,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: () => _continue(pkg),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: WtvaColors.accentPurple,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
                               ),
-                            ],
-                          ],
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              ),
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () => _customize(pkg),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: WtvaColors.accentPurple,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      ),
-                      child: const Text(
-                        'Customize & book',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    VibeCopy.continueLabel,
+                                    style: TextStyle(fontWeight: FontWeight.w700),
+                                  ),
+                                  SizedBox(width: 6),
+                                  Icon(Icons.arrow_forward_rounded, size: 18),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _PreviewStopsCard extends StatelessWidget {
+  const _PreviewStopsCard({required this.stops});
+
+  final List<NightPackageStopRecord> stops;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: WtvaColors.dark400,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: WtvaColors.night200),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < stops.length; i++) ...[
+            if (i > 0)
+              Divider(height: 1, color: WtvaColors.night200.withValues(alpha: 0.8)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  Icon(
+                    slotMoodIcon(stops[i].slotType),
+                    size: 22,
+                    color: WtvaColors.accentPurple,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          slotTypeLabel(stops[i].slotType),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: WtvaColors.neutral50,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: VenueNameButton(
+                                venueId: stops[i].venueId,
+                                name: stops[i].venueName ?? stops[i].title,
+                              ),
+                            ),
+                            Builder(
+                              builder: (context) {
+                                final time = stopTimeLabel(
+                                  scheduledLabel: stops[i].scheduledLabel,
+                                  arrivalWindow: stops[i].arrivalWindow,
+                                );
+                                if (time.isEmpty) return const SizedBox.shrink();
+                                return Text(
+                                  ' · $time',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: WtvaColors.neutral300,
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '${i + 1}/${stops.length}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: WtvaColors.neutral300,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

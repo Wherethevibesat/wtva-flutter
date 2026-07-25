@@ -192,8 +192,8 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                 ),
                 _ActionTile(
                   icon: Icons.auto_awesome_outlined,
-                  label: 'Build Your Night',
-                  desc: 'Plan & book',
+                  label: 'Build My Vibe',
+                  desc: 'Curated plans',
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -240,7 +240,7 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
               children: [
                 const Expanded(
                   child: Text(
-                    'Your nights',
+                    'My Plans',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -284,7 +284,7 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'No nights booked yet',
+                          'No vibes booked yet',
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
                             color: WtvaColors.neutral50,
@@ -306,7 +306,7 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                               builder: (_) => const NightPackagesBrowseScreen(),
                             ),
                           ),
-                          child: const Text('Plan my night'),
+                          child: const Text('Build My Vibe'),
                         ),
                       ],
                     ),
@@ -326,7 +326,7 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'LATEST NIGHT',
+                        'LATEST VIBE',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -345,7 +345,15 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Code ${order.confirmationCode} · ${order.partySize} guests · ${_money(order.totalCents)}',
+                        [
+                          if (order.startsOn != null &&
+                              RegExp(r'^\d{4}-\d{2}-\d{2}$')
+                                  .hasMatch(order.startsOn!))
+                            'Starting ${order.startsOn}',
+                          'Code ${order.confirmationCode}',
+                          '${order.partySize} guests',
+                          _money(order.totalCents),
+                        ].join(' · '),
                         style: const TextStyle(
                           fontSize: 13,
                           color: WtvaColors.neutral300,

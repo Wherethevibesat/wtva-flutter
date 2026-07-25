@@ -24,15 +24,40 @@ class InlineEventDatePicker extends StatelessWidget {
       lastDate: today.add(const Duration(days: 365)),
       helpText: 'Filter by date',
       builder: (context, child) {
+        // Light app surfaces — avoid ColorScheme.dark (white day numbers).
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
+            colorScheme: const ColorScheme.light(
               primary: WtvaColors.accentPurple,
               onPrimary: WtvaColors.onPrimary,
               surface: WtvaColors.dark400,
               onSurface: WtvaColors.neutral50,
+              onSurfaceVariant: WtvaColors.neutral200,
+              outline: WtvaColors.night200,
             ),
-            dialogTheme: const DialogThemeData(backgroundColor: WtvaColors.dark400),
+            dialogTheme: const DialogThemeData(
+              backgroundColor: WtvaColors.dark400,
+            ),
+            datePickerTheme: DatePickerThemeData(
+              backgroundColor: WtvaColors.dark400,
+              headerBackgroundColor: WtvaColors.accentPurple,
+              headerForegroundColor: WtvaColors.onPrimary,
+              dayForegroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.disabled)) {
+                  return WtvaColors.neutral300;
+                }
+                if (states.contains(WidgetState.selected)) {
+                  return WtvaColors.onPrimary;
+                }
+                return WtvaColors.neutral50;
+              }),
+              todayForegroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return WtvaColors.onPrimary;
+                }
+                return WtvaColors.accentPurple;
+              }),
+            ),
           ),
           child: child!,
         );
