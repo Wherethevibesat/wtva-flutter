@@ -3,97 +3,121 @@ import '../../services/night_packages_repository.dart';
 import '../../theme/figma_theme.dart';
 import '../../utils/vibe_copy.dart';
 
-const _bynSteps = <({IconData icon, String label})>[
-  (
-    icon: Icons.auto_awesome_outlined,
-    label: 'Pick curated, Surprise Me, or Build Your Own.',
-  ),
-  (
-    icon: Icons.celebration_outlined,
-    label: 'Add or swap experiences from live venues.',
-  ),
-  (
-    icon: Icons.checklist_rtl_rounded,
-    label: 'Review your plan & total.',
-  ),
-  (
-    icon: Icons.credit_card_rounded,
-    label: 'Checkout — one payment.',
-  ),
-  (
-    icon: Icons.check_circle_outline_rounded,
-    label: 'Show up & enjoy.',
-  ),
+/// Quick-start chips shown on the Build My Vibe hero card.
+const _buildVibeChips = <({String? occasionKey, String label, IconData icon})>[
+  (occasionKey: 'date_night', label: 'Date Night', icon: Icons.favorite_rounded),
+  (occasionKey: 'girls_night', label: 'Girls Night', icon: Icons.groups_rounded),
+  (occasionKey: 'birthday', label: 'Birthday', icon: Icons.cake_rounded),
+  (occasionKey: null, label: VibeCopy.surpriseMe, icon: Icons.casino_rounded),
 ];
 
-/// Steps card matching the web hero “Build My Vibe” widget.
-class HomeBuildYourNightCard extends StatelessWidget {
-  const HomeBuildYourNightCard({super.key, required this.onBuild});
+/// Compact shared height for Pick your vibe / Curated Vibes carousels.
+const kHomeVibeCardHeight = 156.0;
 
-  final VoidCallback onBuild;
+/// Hero card — occasion chips + Surprise Me + Build From Scratch.
+class HomeBuildYourNightCard extends StatelessWidget {
+  const HomeBuildYourNightCard({
+    super.key,
+    required this.onOccasionTap,
+    required this.onSurpriseMe,
+    required this.onBuildFromScratch,
+  });
+
+  final ValueChanged<String> onOccasionTap;
+  final VoidCallback onSurpriseMe;
+  final VoidCallback onBuildFromScratch;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(18, 18, 14, 16),
       decoration: BoxDecoration(
-        color: WtvaColors.dark400,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: WtvaColors.night200),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFF8F4FF),
+            Color(0xFFFFF5FB),
+            Color(0xFFFFFFFF),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0xFFE9D5FF).withValues(alpha: 0.7)),
         boxShadow: WtvaColors.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            VibeCopy.buildMyVibe,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: WtvaColors.neutral50,
-            ),
-          ),
-          const SizedBox(height: 14),
-          for (final step in _bynSteps) ...[
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: WtvaColors.accentPurple.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      step.icon,
-                      size: 18,
-                      color: WtvaColors.accentPurple,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        step.label,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: WtvaColors.neutral50,
-                          height: 1.3,
-                        ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      VibeCopy.buildMyVibe,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: WtvaColors.neutral50,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      'Plan the perfect vibe from start to finish.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: WtvaColors.neutral300,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final gap = 6.0;
+                        final chipW =
+                            ((constraints.maxWidth - gap * 3) / 4)
+                                .clamp(52.0, 72.0);
+                        return Row(
+                          children: [
+                            for (var i = 0; i < _buildVibeChips.length; i++) ...[
+                              if (i > 0) SizedBox(width: gap),
+                              SizedBox(
+                                width: chipW,
+                                child: _BuildVibeChip(
+                                  label: _buildVibeChips[i].label,
+                                  icon: _buildVibeChips[i].icon,
+                                  onTap: () {
+                                    final key = _buildVibeChips[i].occasionKey;
+                                    if (key == null) {
+                                      onSurpriseMe();
+                                    } else {
+                                      onOccasionTap(key);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-          const SizedBox(height: 6),
+              const SizedBox(width: 2),
+              Image.asset(
+                'assets/images/build_vibe_crystal.png',
+                width: 112,
+                height: 112,
+                fit: BoxFit.contain,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: DecoratedBox(
@@ -105,7 +129,7 @@ class HomeBuildYourNightCard extends StatelessWidget {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: onBuild,
+                  onTap: onBuildFromScratch,
                   borderRadius: BorderRadius.circular(28),
                   child: const Padding(
                     padding: EdgeInsets.symmetric(vertical: 14),
@@ -113,16 +137,13 @@ class HomeBuildYourNightCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          VibeCopy.buildMyVibe,
+                          '${VibeCopy.buildFromScratch} →',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
                             fontSize: 14,
                           ),
                         ),
-                        SizedBox(width: 6),
-                        Icon(Icons.arrow_forward_rounded,
-                            color: Colors.white, size: 18),
                       ],
                     ),
                   ),
@@ -131,6 +152,70 @@ class HomeBuildYourNightCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BuildVibeChip extends StatelessWidget {
+  const _BuildVibeChip({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      elevation: 0,
+      shadowColor: Colors.black12,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(4, 10, 4, 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: WtvaColors.night200),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              ShaderMask(
+                blendMode: BlendMode.srcIn,
+                shaderCallback: (bounds) =>
+                    WtvaColors.buttonGradient.createShader(bounds),
+                child: Icon(icon, size: 20, color: Colors.white),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  height: 1.15,
+                  color: WtvaColors.neutral200,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -281,12 +366,12 @@ class _HomePlanYourNightSectionState extends State<HomePlanYourNightSection> {
             final packages = snapshot.data ?? const [];
             if (_tab == 0) {
               return SizedBox(
-                height: 200,
+                height: kHomeVibeCardHeight,
                 child: ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   scrollDirection: Axis.horizontal,
                   itemCount: occasionVibes.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
                   itemBuilder: (context, i) {
                     final vibe = occasionVibes[i];
                     final match = _matchOccasion(packages, vibe.key);
@@ -301,7 +386,7 @@ class _HomePlanYourNightSectionState extends State<HomePlanYourNightSection> {
 
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const SizedBox(
-                height: 220,
+                height: kHomeVibeCardHeight,
                 child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
               );
             }
@@ -318,12 +403,12 @@ class _HomePlanYourNightSectionState extends State<HomePlanYourNightSection> {
             }
 
             return SizedBox(
-              height: 280,
+              height: kHomeVibeCardHeight,
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 scrollDirection: Axis.horizontal,
                 itemCount: show.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
                 itemBuilder: (context, i) {
                   final pkg = show[i];
                   return _CuratedPhotoCard(
@@ -393,16 +478,17 @@ class _OccasionPhotoCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         child: Ink(
-          width: 140,
+          width: 120,
+          height: kHomeVibeCardHeight,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: WtvaColors.night200),
             boxShadow: WtvaColors.cardShadow,
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -422,35 +508,36 @@ class _OccasionPhotoCard extends StatelessWidget {
                   ),
                 ),
                 Positioned(
-                  left: 12,
-                  right: 12,
-                  bottom: 12,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  left: 10,
+                  right: 10,
+                  bottom: 10,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 34,
-                        height: 34,
+                        width: 28,
+                        height: 28,
                         decoration: BoxDecoration(
                           gradient: WtvaColors.buttonGradient,
                           shape: BoxShape.circle,
                           boxShadow: WtvaColors.buttonShadow,
                         ),
-                        child: Icon(vibe.icon, color: Colors.white, size: 16),
+                        child: Icon(vibe.icon, color: Colors.white, size: 14),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          vibe.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                            height: 1.2,
-                            shadows: [
-                              Shadow(blurRadius: 6, color: Colors.black54),
-                            ],
-                          ),
+                      const SizedBox(height: 6),
+                      Text(
+                        vibe.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                          height: 1.2,
+                          shadows: [
+                            Shadow(blurRadius: 6, color: Colors.black54),
+                          ],
                         ),
                       ),
                     ],
@@ -477,16 +564,17 @@ class _CuratedPhotoCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         child: Ink(
-          width: 220,
+          width: 160,
+          height: kHomeVibeCardHeight,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: WtvaColors.night200),
             boxShadow: WtvaColors.cardShadow,
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -511,12 +599,12 @@ class _CuratedPhotoCard extends StatelessWidget {
                 ),
                 if (package.isFeatured)
                   Positioned(
-                    left: 12,
-                    top: 12,
+                    left: 10,
+                    top: 10,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
+                        horizontal: 7,
+                        vertical: 2,
                       ),
                       decoration: BoxDecoration(
                         gradient: WtvaColors.buttonGradient,
@@ -526,7 +614,7 @@ class _CuratedPhotoCard extends StatelessWidget {
                         VibeCopy.featuredBadge,
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 9,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.3,
                         ),
@@ -534,11 +622,12 @@ class _CuratedPhotoCard extends StatelessWidget {
                     ),
                   ),
                 Positioned(
-                  left: 14,
-                  right: 14,
-                  bottom: 14,
+                  left: 10,
+                  right: 10,
+                  bottom: 10,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         package.title,
@@ -547,32 +636,20 @@ class _CuratedPhotoCard extends StatelessWidget {
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
-                          fontSize: 17,
+                          fontSize: 13,
+                          height: 1.2,
                           shadows: [
                             Shadow(blurRadius: 8, color: Colors.black54),
                           ],
                         ),
                       ),
-                      if (package.displayTagline.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          package.displayTagline,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.88),
-                            fontSize: 12,
-                            height: 1.3,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 4),
                       const Text(
                         '${VibeCopy.viewVibe} →',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
-                          fontSize: 13,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -581,109 +658,6 @@ class _CuratedPhotoCard extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Concierge banner aligned with the web homepage.
-class HomeConciergeBannerCard extends StatelessWidget {
-  const HomeConciergeBannerCard({super.key, required this.onAsk});
-
-  final VoidCallback onAsk;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: WtvaColors.dark400,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: WtvaColors.accentPurple.withValues(alpha: 0.25),
-          ),
-          boxShadow: WtvaColors.cardShadow,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: WtvaColors.accentPurple.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.auto_awesome, size: 12, color: WtvaColors.accentPurple),
-                  SizedBox(width: 4),
-                  Text(
-                    'AI CONCIERGE',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.4,
-                      color: WtvaColors.accentPurple,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Not sure where to start?',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: WtvaColors.neutral50,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Tell us the vibe — music, neighborhood, budget — and we’ll match you with a night that fits.',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: WtvaColors.neutral300,
-                height: 1.35,
-              ),
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: WtvaColors.buttonGradient,
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: WtvaColors.buttonShadow,
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: onAsk,
-                    borderRadius: BorderRadius.circular(28),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Center(
-                        child: Text(
-                          'Ask Concierge →',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );

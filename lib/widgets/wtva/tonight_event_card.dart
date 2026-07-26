@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../data/tonight_feed.dart';
 import '../../theme/figma_theme.dart';
 
+/// Compact shared height for Explore Houston event / venue cards.
+const kExploreHoustonCardHeight = 168.0;
+
 class TonightEventCard extends StatelessWidget {
   const TonightEventCard({
     super.key,
@@ -16,16 +19,14 @@ class TonightEventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = featured ? 240.0 : 178.0;
-    final imageHeight = featured ? 148.0 : 104.0;
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: width,
+        width: 168,
+        height: kExploreHoustonCardHeight,
         decoration: BoxDecoration(
           color: WtvaColors.dark400,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: WtvaColors.night200),
           boxShadow: WtvaColors.cardShadow,
         ),
@@ -34,7 +35,7 @@ class TonightEventCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              height: imageHeight,
+              height: 88,
               width: double.infinity,
               child: Stack(
                 fit: StackFit.expand,
@@ -46,10 +47,10 @@ class TonightEventCard extends StatelessWidget {
                         Container(color: WtvaColors.dark300),
                   ),
                   Positioned(
-                    left: 10,
-                    top: 10,
+                    left: 8,
+                    top: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.72),
                         borderRadius: BorderRadius.circular(8),
@@ -66,10 +67,10 @@ class TonightEventCard extends StatelessWidget {
                   ),
                   if (featured)
                     Positioned(
-                      right: 10,
-                      top: 10,
+                      right: 8,
+                      top: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
                           gradient: WtvaColors.buttonGradient,
                           borderRadius: BorderRadius.circular(8),
@@ -87,45 +88,47 @@ class TonightEventCard extends StatelessWidget {
                 ],
               ),
             ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(12, featured ? 10 : 8, 12, featured ? 12 : 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: featured ? 15 : 13,
-                      height: 1.2,
-                      color: WtvaColors.neutral50,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        height: 1.2,
+                        color: WtvaColors.neutral50,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.venueLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: WtvaColors.neutral200,
+                    const Spacer(),
+                    Text(
+                      item.venueLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: WtvaColors.neutral200,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.metaLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: WtvaColors.accentPurple,
+                    const SizedBox(height: 2),
+                    Text(
+                      item.metaLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: WtvaColors.accentPurple,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],

@@ -11,6 +11,7 @@ class VibeCopy {
   static const buildYourVibe = 'Build Your Vibe';
   static const buildMyVibe = 'Build My Vibe';
   static const buildYourOwn = 'Build Your Own';
+  static const buildFromScratch = 'Build From Scratch';
   static const surpriseMe = 'Surprise Me';
   static const shuffleAgain = 'Shuffle again';
   static const bookMyVibe = 'Book My Vibe';

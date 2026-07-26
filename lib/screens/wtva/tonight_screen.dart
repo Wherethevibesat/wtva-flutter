@@ -4,20 +4,21 @@ import '../../data/tonight_feed.dart';
 import '../../data/wtva_cities.dart';
 import '../../models/venue_detail.dart';
 import '../../services/events_repository.dart';
+import '../../services/night_packages_repository.dart';
 import '../../services/user_service.dart';
 import '../../services/venue_repository.dart';
 import '../../theme/figma_theme.dart';
+import '../../utils/account_gate.dart';
 import '../../widgets/wtva/home_build_your_night.dart';
 import '../../widgets/wtva/home_hero_search.dart';
 import '../../widgets/wtva/tonight_event_card.dart';
-import '../../utils/account_gate.dart';
 import 'city_picker_sheet.dart';
-import 'concierge_sheet.dart';
 import 'event_detail_screen.dart';
 import 'events_browse_screen.dart';
 import 'messages_screen.dart';
 import 'more_screen.dart';
 import 'night_package_detail_screen.dart';
+import 'night_package_plan_screen.dart';
 import 'night_packages_browse_screen.dart';
 import 'search_screen.dart';
 import 'tip_night_sheet.dart';
@@ -97,10 +98,59 @@ class _TonightScreenState extends State<TonightScreen> {
     required bool eventsEmpty,
     required bool venuesEmpty,
   }) {
-    if (loading) return 196;
-    if (showVenues) return venuesEmpty ? null : 220;
+    if (loading) return kExploreHoustonCardHeight;
+    if (showVenues) return venuesEmpty ? null : kExploreHoustonCardHeight;
     if (eventsEmpty) return null;
-    return _eventsTab == 0 ? 248.0 : 196.0;
+    return kExploreHoustonCardHeight;
+  }
+
+  Future<void> _openDiyPlan({required bool random}) async {
+    final repo = NightPackagesRepository.instance;
+    final pkg = await repo.getPublished(NightPackagesRepository.diyVibeSlug) ??
+        await repo.getPublished(NightPackagesRepository.diyVibeId);
+    if (!mounted) return;
+    if (pkg == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Build From Scratch is not available yet. Try again soon.'),
+        ),
+      );
+      return;
+    }
+    List<ApprovedStopOfferRecord>? seed;
+    if (random) {
+      seed = await repo.shuffleRandomDiyVibe();
+      if (!mounted) return;
+      if (seed.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No live experiences yet — try Build From Scratch.'),
+          ),
+        );
+        return;
+      }
+    }
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => NightPackagePlanScreen(
+          package: pkg,
+          seedStops: seed ?? const [],
+          allowEmptyStart: true,
+          showShuffle: true,
+        ),
+      ),
+    );
+  }
+
+  void _openOccasion(String key) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => NightPackagesBrowseScreen(occasionKey: key),
+      ),
+    );
   }
 
   String get _firstName {
@@ -141,7 +191,6 @@ class _TonightScreenState extends State<TonightScreen> {
     final upcoming = TonightFeed.upcomingEvents(_events);
     final activeEvents = _eventsTab == 0 ? featured : upcoming;
     final showVenues = _eventsTab == 2;
-    final vibes = TonightFeed.vibes(eventCount: _events.length);
 
     return Scaffold(
       backgroundColor: WtvaColors.dark500,
@@ -195,12 +244,9 @@ class _TonightScreenState extends State<TonightScreen> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: HomeBuildYourNightCard(
-                onBuild: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const NightPackagesBrowseScreen(),
-                  ),
-                ),
+                onOccasionTap: _openOccasion,
+                onSurpriseMe: () => _openDiyPlan(random: true),
+                onBuildFromScratch: () => _openDiyPlan(random: false),
               ),
             ),
           ),
@@ -297,7 +343,7 @@ class _TonightScreenState extends State<TonightScreen> {
               ),
               child: _loading
                   ? const SizedBox(
-                      height: 196,
+                      height: kExploreHoustonCardHeight,
                       child: Center(child: CircularProgressIndicator()),
                     )
                   : showVenues
@@ -359,57 +405,6 @@ class _TonightScreenState extends State<TonightScreen> {
                                 );
                               },
                             ),
-            ),
-          ),
-          const SpacedSliver(28),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _TipNightBanner(
-                onTap: () => TipNightSheet.show(context, source: 'empty_feed'),
-              ),
-            ),
-          ),
-          const SpacedSliver(28),
-          SliverToBoxAdapter(
-            child: HomeConciergeBannerCard(
-              onAsk: () => ConciergeSheet.show(context),
-            ),
-          ),
-          const SpacedSliver(28),
-          SpacedSliver(
-            0,
-            child: _SectionHeader(
-              title: 'Explore by vibe',
-              onSeeAll: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const EventsBrowseScreen()),
-              ),
-            ),
-          ),
-          const SpacedSliver(12),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 112,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                scrollDirection: Axis.horizontal,
-                itemCount: vibes.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemBuilder: (context, i) {
-                  final vibe = vibes[i];
-                  return _VibeTile(
-                    label: vibe.label,
-                    countLabel: vibe.countLabel,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => EventsBrowseScreen(initialEventType: vibe.query),
-                      ),
-                    ),
-                  );
-                },
-              ),
             ),
           ),
           const SpacedSliver(120),
@@ -886,12 +881,13 @@ class _TonightVenueCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         child: Ink(
-          width: 178,
+          width: 168,
+          height: kExploreHoustonCardHeight,
           decoration: BoxDecoration(
             color: WtvaColors.dark400,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: WtvaColors.night200),
             boxShadow: WtvaColors.cardShadow,
           ),
@@ -899,9 +895,9 @@ class _TonightVenueCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 child: SizedBox(
-                  height: 104,
+                  height: 88,
                   width: double.infinity,
                   child: Stack(
                     fit: StackFit.expand,
@@ -918,8 +914,8 @@ class _TonightVenueCard extends StatelessWidget {
                           top: 8,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+                              horizontal: 7,
+                              vertical: 3,
                             ),
                             decoration: BoxDecoration(
                               gradient: WtvaColors.buttonGradient,
@@ -939,232 +935,52 @@ class _TonightVenueCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      v.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                        color: WtvaColors.neutral50,
-                      ),
-                    ),
-                    if (meta.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        meta,
-                        maxLines: 1,
+                        v.name,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          height: 1.2,
+                          color: WtvaColors.neutral50,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (meta.isNotEmpty)
+                        Text(
+                          meta,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: WtvaColors.neutral300,
+                          ),
+                        ),
+                      const SizedBox(height: 2),
+                      Text(
+                        detail.isOpen ? 'Open now' : 'Closed',
+                        style: TextStyle(
                           fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: WtvaColors.neutral300,
+                          fontWeight: FontWeight.w700,
+                          color: detail.isOpen
+                              ? WtvaColors.accentPurple
+                              : WtvaColors.neutral300,
                         ),
                       ),
                     ],
-                    const SizedBox(height: 6),
-                    Text(
-                      detail.isOpen ? 'Open now' : 'Closed',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: detail.isOpen
-                            ? WtvaColors.accentPurple
-                            : WtvaColors.neutral300,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TipNightBanner extends StatelessWidget {
-  const _TipNightBanner({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: WtvaColors.dark400,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: WtvaColors.night200),
-            boxShadow: WtvaColors.cardShadow,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: WtvaColors.buttonGradient,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(Icons.campaign_rounded, color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'What’s the move?',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Tip a night or vibe — we’ll build the calendar from it.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: WtvaColors.neutral200,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded, color: WtvaColors.neutral300),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.title,
-    required this.onSeeAll,
-  });
-
-  final String title;
-  final VoidCallback onSeeAll;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: WtvaColors.neutral50,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: onSeeAll,
-            child: const Text(
-              'See all',
-              style: TextStyle(
-                color: WtvaColors.accentPurple,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _VibeTile extends StatelessWidget {
-  const _VibeTile({
-    required this.label,
-    required this.countLabel,
-    required this.onTap,
-  });
-
-  final String label;
-  final String countLabel;
-  final VoidCallback onTap;
-
-  IconData get _icon {
-    switch (label) {
-      case 'Afrobeats':
-        return Icons.album_rounded;
-      case 'Rooftops':
-        return Icons.apartment_rounded;
-      case 'Day Parties':
-        return Icons.wb_sunny_rounded;
-      case 'Brunch':
-        return Icons.brunch_dining_rounded;
-      case 'VIP':
-        return Icons.workspace_premium_rounded;
-      default:
-        return Icons.nights_stay_rounded;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 108,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: WtvaColors.dark400,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: WtvaColors.night200),
-          boxShadow: WtvaColors.cardShadow,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: WtvaColors.accentPurple.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(_icon, size: 18, color: WtvaColors.accentPurple),
-            ),
-            const Spacer(),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: WtvaColors.neutral50,
-              ),
-            ),
-            if (countLabel.trim().isNotEmpty)
-              Text(
-                countLabel,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: WtvaColors.neutral300,
-                ),
-              ),
-          ],
         ),
       ),
     );
