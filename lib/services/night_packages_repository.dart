@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../config/app_config.dart';
 import 'supabase_bootstrap.dart';
 
@@ -482,10 +484,20 @@ class NightPackagesRepository {
     final userId = client?.auth.currentUser?.id;
     if (client == null || userId == null) return const [];
 
-    try {
+    Future<List<NightPackageOrderRecord>> run(String select) async {
       final rows = await client
           .from('night_package_orders')
-          .select('''
+          .select(select)
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+      return (rows as List)
+          .cast<Map<String, dynamic>>()
+          .map(_mapOrderRow)
+          .toList();
+    }
+
+    try {
+      return await run('''
             id, confirmation_code, party_size, starts_on, total_cents, status,
             expires_at, package_id,
             package:night_packages(id, title, slug),
@@ -493,51 +505,34 @@ class NightPackagesRepository {
               title, redemption_code, scheduled_label, sort_order, status,
               line_total_cents, venue:venues(name)
             )
-          ''')
-          .eq('user_id', userId)
-          .order('created_at', ascending: false);
-      return (rows as List)
-          .cast<Map<String, dynamic>>()
-          .map(_mapOrderRow)
-          .toList();
-    } catch (_) {
+          ''');
+    } catch (e) {
+      debugPrint('listMyOrders primary failed: $e');
       // Older schema / missing expires_at or stop status
       try {
-        final rows = await client
-            .from('night_package_orders')
-            .select('''
+        return await run('''
               id, confirmation_code, party_size, starts_on, total_cents, status,
+              package_id,
               package:night_packages(id, title, slug),
               stops:night_package_order_stops(
                 title, redemption_code, scheduled_label, sort_order,
                 line_total_cents, venue:venues(name)
               )
-            ''')
-            .eq('user_id', userId)
-            .order('created_at', ascending: false);
-        return (rows as List)
-            .cast<Map<String, dynamic>>()
-            .map(_mapOrderRow)
-            .toList();
-      } catch (_) {
+            ''');
+      } catch (e2) {
+        debugPrint('listMyOrders fallback failed: $e2');
         try {
-          final rows = await client
-              .from('night_package_orders')
-              .select('''
+          return await run('''
                 id, confirmation_code, party_size, total_cents, status,
+                package_id,
                 package:night_packages(title),
                 stops:night_package_order_stops(
                   title, redemption_code, scheduled_label, sort_order,
-                  line_total_cents, venue:venues(name)
+                  line_total_cents
                 )
-              ''')
-              .eq('user_id', userId)
-              .order('created_at', ascending: false);
-          return (rows as List)
-              .cast<Map<String, dynamic>>()
-              .map(_mapOrderRow)
-              .toList();
-        } catch (_) {
+              ''');
+        } catch (e3) {
+          debugPrint('listMyOrders minimal failed: $e3');
           return const [];
         }
       }

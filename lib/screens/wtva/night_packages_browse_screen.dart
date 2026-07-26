@@ -222,7 +222,10 @@ class _NightPackagesBrowseScreenState extends State<NightPackagesBrowseScreen> {
                 ),
                 const SizedBox(height: 18),
                 if (_hubTab == 1)
-                  _MyPlansTeaser(onOpen: _openMyPlans)
+                  _MyPlansTab(
+                    onOpenFull: _openMyPlans,
+                    onBrowseVibes: () => setState(() => _hubTab = 0),
+                  )
                 else ...[
                   if (occasionTitle == null) ...[
                     _DiyEntryRow(
@@ -392,54 +395,228 @@ class _DiyEntryCard extends StatelessWidget {
   }
 }
 
-class _MyPlansTeaser extends StatelessWidget {
-  const _MyPlansTeaser({required this.onOpen});
+class _MyPlansTab extends StatefulWidget {
+  const _MyPlansTab({
+    required this.onOpenFull,
+    required this.onBrowseVibes,
+  });
 
-  final VoidCallback onOpen;
+  final VoidCallback onOpenFull;
+  final VoidCallback onBrowseVibes;
+
+  @override
+  State<_MyPlansTab> createState() => _MyPlansTabState();
+}
+
+class _MyPlansTabState extends State<_MyPlansTab> {
+  late Future<List<NightPackageOrderRecord>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = NightPackagesRepository.instance.listMyOrders();
+  }
+
+  String _money(int cents) {
+    final dollars = cents / 100;
+    return '\$${dollars.toStringAsFixed(dollars.truncateToDouble() == dollars ? 0 : 2)}';
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'requested':
+        return 'Waiting on venues';
+      case 'awaiting_payment':
+        return 'Ready to pay';
+      case 'expired':
+        return 'Request expired';
+      case 'cancelled':
+        return 'Cancelled';
+      case 'paid':
+        return 'Booked';
+      default:
+        return status;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: WtvaColors.dark400,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: WtvaColors.night200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            VibeCopy.myPlans,
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 16,
-              color: WtvaColors.neutral50,
+    if (UserService().isGuest) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: WtvaColors.dark400,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: WtvaColors.night200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              VibeCopy.myPlans,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                color: WtvaColors.neutral50,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Confirmation codes and per-stop redemption live here after checkout.',
-            style: TextStyle(
-              fontSize: 13,
-              height: 1.4,
-              color: WtvaColors.neutral300,
+            const SizedBox(height: 6),
+            const Text(
+              'Sign in to see open requests and booked vibes.',
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                color: WtvaColors.neutral300,
+              ),
             ),
-          ),
-          const SizedBox(height: 14),
-          TextButton(
-            onPressed: onOpen,
-            style: TextButton.styleFrom(
-              foregroundColor: WtvaColors.accentPurple,
-              padding: EdgeInsets.zero,
+            const SizedBox(height: 14),
+            TextButton(
+              onPressed: widget.onOpenFull,
+              style: TextButton.styleFrom(
+                foregroundColor: WtvaColors.accentPurple,
+                padding: EdgeInsets.zero,
+              ),
+              child: const Text(
+                'Sign in →',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
-            child: const Text(
-              'Open my plans →',
-              style: TextStyle(fontWeight: FontWeight.w700),
+          ],
+        ),
+      );
+    }
+
+    return FutureBuilder<List<NightPackageOrderRecord>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 32),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final orders = snapshot.data ?? const <NightPackageOrderRecord>[];
+        if (orders.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: WtvaColors.dark400,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: WtvaColors.night200),
             ),
-          ),
-        ],
-      ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'No plans yet',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: WtvaColors.neutral50,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Request-to-book and paid vibes show up here — including while venues are still confirming.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.4,
+                    color: WtvaColors.neutral300,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextButton(
+                  onPressed: widget.onBrowseVibes,
+                  style: TextButton.styleFrom(
+                    foregroundColor: WtvaColors.accentPurple,
+                    padding: EdgeInsets.zero,
+                  ),
+                  child: const Text(
+                    'Browse vibes →',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ...orders.map((order) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: WtvaColors.dark400,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: order.isAwaitingPayment || order.isRequested
+                          ? WtvaColors.accentPurple.withValues(alpha: 0.45)
+                          : WtvaColors.night200,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _statusLabel(order.status).toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6,
+                          color: WtvaColors.accentPurple,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        order.packageTitle,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 17,
+                          color: WtvaColors.neutral50,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Ref ${order.confirmationCode} · ${order.partySize} guests · ${_money(order.totalCents)}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: WtvaColors.neutral300,
+                        ),
+                      ),
+                      if (order.isRequested) ...[
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Waiting for every venue to confirm — then you can pay.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: WtvaColors.neutral300,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }),
+            TextButton(
+              onPressed: widget.onOpenFull,
+              style: TextButton.styleFrom(
+                foregroundColor: WtvaColors.accentPurple,
+                padding: EdgeInsets.zero,
+              ),
+              child: const Text(
+                'Open full My Plans →',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
