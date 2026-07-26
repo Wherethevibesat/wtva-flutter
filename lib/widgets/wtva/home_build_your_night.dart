@@ -6,11 +6,11 @@ import '../../utils/vibe_copy.dart';
 const _bynSteps = <({IconData icon, String label})>[
   (
     icon: Icons.auto_awesome_outlined,
-    label: 'Choose a curated vibe or start from scratch.',
+    label: 'Pick curated, Surprise Me, or Build Your Own.',
   ),
   (
     icon: Icons.celebration_outlined,
-    label: 'Add experiences (places, events, tables).',
+    label: 'Add or swap experiences from live venues.',
   ),
   (
     icon: Icons.checklist_rtl_rounded,

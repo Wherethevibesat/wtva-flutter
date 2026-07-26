@@ -6,6 +6,7 @@ import '../../utils/account_gate.dart';
 import '../../utils/vibe_copy.dart';
 import 'night_package_detail_screen.dart';
 import 'night_package_orders_screen.dart';
+import 'night_package_plan_screen.dart';
 
 class NightPackagesBrowseScreen extends StatefulWidget {
   const NightPackagesBrowseScreen({
@@ -68,6 +69,46 @@ class _NightPackagesBrowseScreenState extends State<NightPackagesBrowseScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const NightPackageOrdersScreen()),
+    );
+  }
+
+  Future<void> _openDiyPlan({required bool random}) async {
+    final repo = NightPackagesRepository.instance;
+    final pkg = await repo.getPublished(NightPackagesRepository.diyVibeSlug) ??
+        await repo.getPublished(NightPackagesRepository.diyVibeId);
+    if (!mounted) return;
+    if (pkg == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Build Your Own is not available yet. Try again soon.'),
+        ),
+      );
+      return;
+    }
+    List<ApprovedStopOfferRecord>? seed;
+    if (random) {
+      seed = await repo.shuffleRandomDiyVibe();
+      if (!mounted) return;
+      if (seed.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No live experiences yet — try Build Your Own.'),
+          ),
+        );
+        return;
+      }
+    }
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => NightPackagePlanScreen(
+          package: pkg,
+          seedStops: seed ?? const [],
+          allowEmptyStart: true,
+          showShuffle: true,
+        ),
+      ),
     );
   }
 
@@ -182,30 +223,39 @@ class _NightPackagesBrowseScreenState extends State<NightPackagesBrowseScreen> {
                 const SizedBox(height: 18),
                 if (_hubTab == 1)
                   _MyPlansTeaser(onOpen: _openMyPlans)
-                else if (packages.isEmpty)
-                  _EmptyVibes(
-                    occasionTitle: occasionTitle,
-                    onBrowseAll: occasionTitle != null
-                        ? () => setState(() => _occasionKey = null)
-                        : null,
-                  )
-                else
-                  ...packages.map(
-                    (pkg) => Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: _PackageImageCard(
-                        package: pkg,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => NightPackageDetailScreen(
-                              packageId: pkg.pathId,
+                else ...[
+                  if (occasionTitle == null) ...[
+                    _DiyEntryRow(
+                      onSurprise: () => _openDiyPlan(random: true),
+                      onBuild: () => _openDiyPlan(random: false),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (packages.isEmpty)
+                    _EmptyVibes(
+                      occasionTitle: occasionTitle,
+                      onBrowseAll: occasionTitle != null
+                          ? () => setState(() => _occasionKey = null)
+                          : null,
+                    )
+                  else
+                    ...packages.map(
+                      (pkg) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _PackageImageCard(
+                          package: pkg,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => NightPackageDetailScreen(
+                                packageId: pkg.pathId,
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
+                ],
               ],
             ),
           );
@@ -249,6 +299,92 @@ class _HubTab extends StatelessWidget {
                 color: selected ? Colors.white : WtvaColors.neutral300,
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DiyEntryRow extends StatelessWidget {
+  const _DiyEntryRow({
+    required this.onSurprise,
+    required this.onBuild,
+  });
+
+  final VoidCallback onSurprise;
+  final VoidCallback onBuild;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _DiyEntryCard(
+            title: VibeCopy.surpriseMe,
+            subtitle: 'Shuffle a full night from the live pool.',
+            onTap: onSurprise,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _DiyEntryCard(
+            title: VibeCopy.buildYourOwn,
+            subtitle: 'Start empty and mix venues yourself.',
+            onTap: onBuild,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DiyEntryCard extends StatelessWidget {
+  const _DiyEntryCard({
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: WtvaColors.dark400,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: WtvaColors.night200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  color: WtvaColors.neutral50,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 12,
+                  height: 1.35,
+                  color: WtvaColors.neutral300,
+                ),
+              ),
+            ],
           ),
         ),
       ),

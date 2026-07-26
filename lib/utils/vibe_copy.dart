@@ -10,6 +10,9 @@ class VibeCopy {
   static const makeItMine = 'Continue';
   static const buildYourVibe = 'Build Your Vibe';
   static const buildMyVibe = 'Build My Vibe';
+  static const buildYourOwn = 'Build Your Own';
+  static const surpriseMe = 'Surprise Me';
+  static const shuffleAgain = 'Shuffle again';
   static const bookMyVibe = 'Book My Vibe';
   static const myPlans = 'My Plans';
   static const vibesTab = 'Vibes';
@@ -22,11 +25,13 @@ class VibeCopy {
   static const featuredBadge = 'Trending';
   static const pickYourVibe = 'Pick your vibe';
   static const pickYourVibeSubtitle =
-      'Start from an occasion — or browse curated plans below.';
+      'Start from an occasion, shuffle a random vibe, or build your own.';
   static const seeAllVibes = 'See all vibes';
   static const softDateNote =
       "We'll confirm this date with each place — subject to availability.";
   static const addExperience = '+ Add experience';
+  static const diyVibeSlug = 'build-your-own';
+  static const diyVibeId = 'a0000000-0000-4000-8000-0000000000d1';
 }
 
 /// Fallback nightlife image when a package has no `image_url`.

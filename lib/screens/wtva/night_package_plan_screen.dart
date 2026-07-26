@@ -11,9 +11,19 @@ import 'night_package_success_screen.dart';
 import 'vibe_split_waiting_screen.dart';
 
 class NightPackagePlanScreen extends StatefulWidget {
-  const NightPackagePlanScreen({super.key, required this.package});
+  const NightPackagePlanScreen({
+    super.key,
+    required this.package,
+    this.seedStops,
+    this.allowEmptyStart = false,
+    this.showShuffle = false,
+  });
 
   final NightPackageRecord package;
+  /// When set (e.g. Surprise Me), overrides package.stops as the starting plan.
+  final List<ApprovedStopOfferRecord>? seedStops;
+  final bool allowEmptyStart;
+  final bool showShuffle;
 
   @override
   State<NightPackagePlanScreen> createState() => _NightPackagePlanScreenState();
@@ -43,24 +53,41 @@ class _NightPackagePlanScreenState extends State<NightPackagePlanScreen> {
     super.initState();
     final today = DateTime.now();
     _startsOn = DateTime(today.year, today.month, today.day);
-    _stops = widget.package.stops
-        .map(
-          (s) => ApprovedStopOfferRecord(
-            id: s.offerId,
-            title: s.title,
-            slotType: s.slotType,
-            priceCents: s.priceCents,
-            arrivalWindow: s.arrivalWindow,
-            venueId: s.venueId,
-            venueName: s.venueName,
-            whyPicked: s.whyPicked,
-            scheduledLabel: s.scheduledLabel,
-          ),
-        )
-        .toList();
+    if (widget.seedStops != null) {
+      _stops = List<ApprovedStopOfferRecord>.from(widget.seedStops!);
+    } else {
+      _stops = widget.package.stops
+          .map(
+            (s) => ApprovedStopOfferRecord(
+              id: s.offerId,
+              title: s.title,
+              slotType: s.slotType,
+              priceCents: s.priceCents,
+              arrivalWindow: s.arrivalWindow,
+              venueId: s.venueId,
+              venueName: s.venueName,
+              whyPicked: s.whyPicked,
+              scheduledLabel: s.scheduledLabel,
+            ),
+          )
+          .toList();
+    }
     _partySize = widget.package.partySizeMin;
     _syncSplitFields();
     _loadCatalog();
+  }
+
+  Future<void> _shuffleAgain() async {
+    final picks =
+        await NightPackagesRepository.instance.shuffleRandomDiyVibe();
+    if (!mounted) return;
+    if (picks.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No live experiences to shuffle yet.')),
+      );
+      return;
+    }
+    setState(() => _stops = picks);
   }
 
   Future<void> _loadCatalog() async {
@@ -523,7 +550,35 @@ class _NightPackagePlanScreenState extends State<NightPackagePlanScreen> {
           VibeCopy.softDateNote,
           style: TextStyle(fontSize: 12, color: WtvaColors.neutral300, height: 1.35),
         ),
+        if (widget.showShuffle) ...[
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: _shuffleAgain,
+              child: const Text(VibeCopy.shuffleAgain),
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
+        if (widget.allowEmptyStart && _stops.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: WtvaColors.night200,
+                style: BorderStyle.solid,
+              ),
+            ),
+            child: const Text(
+              'Your night is empty — add experiences from the live pool.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: WtvaColors.neutral300),
+            ),
+          ),
         Container(
           decoration: BoxDecoration(
             color: WtvaColors.dark400,

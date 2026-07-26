@@ -187,11 +187,17 @@ class NightPackagesRepository {
       stop_offer:package_stop_offers(
         id, title, slot_type, price_cents, inclusions, arrival_window,
         why_picked, duration_label, dress_code,
-        status, is_active,
+        status, is_active, diy_pool,
         venue:venues(id, name)
       )
     )
   ''';
+
+  static const diyVibeSlug = 'build-your-own';
+  static const diyVibeId = 'a0000000-0000-4000-8000-0000000000d1';
+
+  bool _isDiyAnchor(NightPackageRecord p) =>
+      p.slug == diyVibeSlug || p.id == diyVibeId;
 
   Future<List<NightPackageRecord>> listPublished({int limit = 40}) async {
     if (!AppConfig.useSupabaseData || !SupabaseBootstrap.initialized) {
@@ -210,7 +216,7 @@ class NightPackagesRepository {
       return (rows as List)
           .cast<Map<String, dynamic>>()
           .map(_fromRow)
-          .where((p) => p.stops.isNotEmpty)
+          .where((p) => !_isDiyAnchor(p) && p.stops.isNotEmpty)
           .toList();
     } catch (_) {
       // Fallback if storytelling columns not migrated yet.
@@ -234,12 +240,60 @@ class NightPackagesRepository {
         return (rows as List)
             .cast<Map<String, dynamic>>()
             .map(_fromRow)
-            .where((p) => p.stops.isNotEmpty)
+            .where((p) => !_isDiyAnchor(p) && p.stops.isNotEmpty)
             .toList();
       } catch (_) {
         return const [];
       }
     }
+  }
+
+  /// Shuffle one stop per slot from DIY pool (falls back to all bookable).
+  Future<List<ApprovedStopOfferRecord>> shuffleRandomDiyVibe({
+    int maxStops = 4,
+  }) async {
+    var pool = await listApprovedStops();
+    // Prefer DIY-only when column is available — listApprovedStops already
+    // returns bookable (approved OR diy_pool).
+    if (pool.isEmpty) return const [];
+
+    final slotOrder = [
+      'brunch',
+      'day_party',
+      'lounge',
+      'night',
+      'after_hours',
+    ];
+    final bySlot = <String, List<ApprovedStopOfferRecord>>{};
+    for (final o in pool) {
+      bySlot.putIfAbsent(o.slotType, () => []).add(o);
+    }
+
+    final picked = <ApprovedStopOfferRecord>[];
+    final usedVenues = <String>{};
+    final capped = maxStops.clamp(2, 6);
+
+    for (final slot in slotOrder) {
+      if (picked.length >= capped) break;
+      final candidates = [...(bySlot[slot] ?? [])]..shuffle();
+      if (candidates.isEmpty) continue;
+      final choice = candidates.firstWhere(
+        (c) => c.venueId == null || !usedVenues.contains(c.venueId),
+        orElse: () => candidates.first,
+      );
+      picked.add(choice);
+      if (choice.venueId != null) usedVenues.add(choice.venueId!);
+    }
+
+    if (picked.length < 2) {
+      final rest = [...pool]..shuffle();
+      for (final o in rest) {
+        if (picked.length >= capped) break;
+        if (picked.any((p) => p.id == o.id)) continue;
+        picked.add(o);
+      }
+    }
+    return picked;
   }
 
   Future<NightPackageRecord?> getPublished(String idOrSlug) async {
@@ -474,9 +528,13 @@ class NightPackagesRepository {
     if (client == null) return const [];
 
     try {
-      var query = client.from('package_stop_offers').select(
+      var query = client
+          .from('package_stop_offers')
+          .select(
             'id, title, description, slot_type, price_cents, arrival_window, why_picked, venue:venues(id, name)',
-          ).eq('status', 'approved').eq('is_active', true);
+          )
+          .eq('is_active', true)
+          .or('status.eq.approved,diy_pool.eq.true');
 
       if (slotType != null && slotType.isNotEmpty) {
         query = query.eq('slot_type', slotType);
@@ -524,7 +582,9 @@ class NightPackagesRepository {
       final offerRaw = s['stop_offer'];
       if (offerRaw is! Map) continue;
       final offer = Map<String, dynamic>.from(offerRaw);
-      if (offer['status'] != 'approved' || offer['is_active'] == false) {
+      final diyPool = offer['diy_pool'] == true;
+      final approved = offer['status'] == 'approved';
+      if (offer['is_active'] == false || (!approved && !diyPool)) {
         continue;
       }
       final venueRaw = offer['venue'];
