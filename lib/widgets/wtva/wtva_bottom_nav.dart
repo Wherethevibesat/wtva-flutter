@@ -7,7 +7,6 @@ import '../../theme/wtva_icons.dart';
 class WtvaBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-  final VoidCallback onCheckIn;
   final String homeLabel;
   final IconData homeIcon;
 
@@ -15,7 +14,6 @@ class WtvaBottomNav extends StatelessWidget {
     super.key,
     required this.currentIndex,
     required this.onTap,
-    required this.onCheckIn,
     this.homeLabel = 'Tonight',
     this.homeIcon = Icons.nightlife_outlined,
   });
@@ -36,7 +34,7 @@ class WtvaBottomNav extends StatelessWidget {
           child: SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
@@ -52,16 +50,21 @@ class WtvaBottomNav extends StatelessWidget {
                     selected: currentIndex == 1,
                     onTap: () => onTap(1),
                   ),
-                  _CheckInFab(onTap: onCheckIn),
                   _NavItem(
                     icon: Icons.auto_awesome_outlined,
                     label: 'Plan',
+                    selected: currentIndex == 2,
+                    onTap: () => onTap(2),
+                  ),
+                  _NavItem(
+                    icon: Icons.storefront_outlined,
+                    label: 'Venues',
                     selected: currentIndex == 3,
                     onTap: () => onTap(3),
                   ),
                   _NavItem(
-                    icon: Icons.chat_bubble_outline,
-                    label: 'Inbox',
+                    icon: Icons.person_outline_rounded,
+                    label: 'Profile',
                     selected: currentIndex == 4,
                     onTap: () => onTap(4),
                   ),
@@ -115,48 +118,12 @@ class _NavItem extends StatelessWidget {
                 margin: const EdgeInsets.only(top: 4),
                 width: 4,
                 height: 4,
-                decoration: const BoxDecoration(color: WtvaColors.accentPurple, shape: BoxShape.circle),
+                decoration: const BoxDecoration(
+                  color: WtvaColors.accentPurple,
+                  shape: BoxShape.circle,
+                ),
               ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CheckInFab extends StatefulWidget {
-  final VoidCallback onTap;
-
-  const _CheckInFab({required this.onTap});
-
-  @override
-  State<_CheckInFab> createState() => _CheckInFabState();
-}
-
-class _CheckInFabState extends State<_CheckInFab> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTapCancel: () => setState(() => _pressed = false),
-      onTap: widget.onTap,
-      child: AnimatedScale(
-        scale: _pressed ? 0.92 : 1,
-        duration: const Duration(milliseconds: 120),
-        child: Container(
-          width: 56,
-          height: 56,
-          margin: const EdgeInsets.only(bottom: 20),
-          decoration: BoxDecoration(
-            gradient: WtvaColors.fabGradient,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-            boxShadow: WtvaColors.buttonShadow,
-          ),
-          child: const Icon(Icons.qr_code_scanner_rounded, color: WtvaColors.onPrimary, size: 26),
         ),
       ),
     );

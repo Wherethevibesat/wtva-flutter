@@ -24,7 +24,7 @@ class _MainTutorialOverlayState extends State<MainTutorialOverlay> {
 
   static const _pages = [
     ('Tonight', 'See what’s buzzing — trending spots, happy hours, and your vibe.'),
-    ('Check in', 'Tap the center button to check in when you arrive at a venue.'),
+    ('Plan & Venues', 'Build a vibe under Plan, or browse spots under Venues.'),
     ('Concierge', 'Ask for picks anytime — vibe, neighborhood, or “what’s open now.”'),
   ];
 

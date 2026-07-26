@@ -3,17 +3,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/user_service.dart';
 import '../../theme/figma_theme.dart';
 import '../../widgets/wtva/wtva_bottom_nav.dart';
-import '../../utils/account_gate.dart';
-import 'check_in_sheet.dart';
 import 'concierge_sheet.dart';
 import 'events_browse_screen.dart';
 import 'main_tutorial_overlay.dart';
 import 'member_dashboard_screen.dart';
-import 'messages_screen.dart';
-import 'tonight_screen.dart';
 import 'night_packages_browse_screen.dart';
+import 'tonight_screen.dart';
+import 'venues_browse_screen.dart';
+import 'wtva_profile_screen.dart';
 
-/// Main app shell — Home(Dashboard|Tonight) / Events / Check In / Vibes / Inbox.
+/// Main app shell — Home / Events / Plan / Venues / Profile.
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -22,7 +21,7 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  /// 0 Home, 1 Events, 2 FAB, 3 Vibes, 4 Inbox
+  /// 0 Home, 1 Events, 2 Plan, 3 Venues, 4 Profile
   int _navIndex = 0;
 
   /// Signed-in Home tab: dashboard by default; flip to Tonight (main feed).
@@ -63,10 +62,12 @@ class _AppShellState extends State<AppShell> {
     switch (_navIndex) {
       case 1:
         return const EventsBrowseScreen(embedded: true);
-      case 3:
+      case 2:
         return const NightPackagesBrowseScreen(embedded: true);
+      case 3:
+        return const VenuesBrowseScreen(embedded: true);
       case 4:
-        return const MessagesScreen();
+        return const WtvaProfileScreen(embedded: true);
       case 0:
       default:
         if (_signedIn && !_showTonightHome) {
@@ -96,7 +97,6 @@ class _AppShellState extends State<AppShell> {
             ? Icons.nightlife_outlined
             : Icons.dashboard_outlined,
         onTap: (index) {
-          if (index == 2) return;
           if (index == 0 && _signedIn) {
             // Home / Tonight tab always returns to the personal dashboard.
             _openDashboardHome();
@@ -104,15 +104,8 @@ class _AppShellState extends State<AppShell> {
           }
           setState(() => _navIndex = index);
         },
-        onCheckIn: _openCheckIn,
       ),
     );
-  }
-
-  Future<void> _openCheckIn() async {
-    if (!await AccountGate.requireSignIn(context)) return;
-    if (!mounted) return;
-    CheckInSheet.show(context);
   }
 }
 

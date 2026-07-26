@@ -10,7 +10,6 @@ import '../../theme/figma_theme.dart';
 import '../../widgets/wtva/home_build_your_night.dart';
 import '../../widgets/wtva/home_hero_search.dart';
 import '../../widgets/wtva/tonight_event_card.dart';
-import '../../utils/account_gate.dart';
 import 'city_picker_sheet.dart';
 import 'concierge_sheet.dart';
 import 'event_detail_screen.dart';
@@ -23,7 +22,6 @@ import 'tip_night_sheet.dart';
 import 'venue_detail_screen.dart';
 import 'venues_browse_screen.dart';
 import 'wtva_notifications_screen.dart';
-import 'wtva_profile_screen.dart';
 
 class TonightScreen extends StatefulWidget {
   const TonightScreen({super.key});
@@ -167,19 +165,6 @@ class _TonightScreenState extends State<TonightScreen> {
                 context,
                 MaterialPageRoute(builder: (_) => const WtvaNotificationsScreen()),
               ),
-              onProfile: () async {
-                if (!await AccountGate.requireSignIn(
-                  context,
-                  message: 'Log in or sign up to view your profile.',
-                )) {
-                  return;
-                }
-                if (!context.mounted) return;
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const WtvaProfileScreen()),
-                );
-              },
               onMore: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const MoreScreen()),
@@ -443,7 +428,6 @@ class _HeroHeader extends StatelessWidget {
     required this.onMoodTap,
     required this.onCityTap,
     required this.onNotify,
-    required this.onProfile,
     required this.onMore,
     required this.onSearch,
   });
@@ -455,7 +439,6 @@ class _HeroHeader extends StatelessWidget {
   final ValueChanged<int> onMoodTap;
   final VoidCallback onCityTap;
   final VoidCallback onNotify;
-  final VoidCallback onProfile;
   final VoidCallback onMore;
   final VoidCallback onSearch;
 
@@ -539,11 +522,6 @@ class _HeroHeader extends StatelessWidget {
                         IconButton(
                           onPressed: onNotify,
                           icon: const Icon(Icons.notifications_none_rounded, color: Colors.white),
-                        ),
-                        IconButton(
-                          onPressed: onProfile,
-                          tooltip: 'Profile',
-                          icon: const Icon(Icons.person_outline_rounded, color: Colors.white),
                         ),
                         IconButton(
                           onPressed: onMore,

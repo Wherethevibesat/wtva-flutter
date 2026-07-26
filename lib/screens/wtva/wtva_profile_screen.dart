@@ -16,7 +16,10 @@ import 'wtva_login_screen.dart';
 import 'wtva_settings_screen.dart';
 
 class WtvaProfileScreen extends StatelessWidget {
-  const WtvaProfileScreen({super.key});
+  const WtvaProfileScreen({super.key, this.embedded = false});
+
+  /// When true (bottom-nav tab), hide the back chevron.
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +37,7 @@ class WtvaProfileScreen extends StatelessWidget {
         backgroundColor: WtvaColors.dark500,
         foregroundColor: WtvaColors.neutral50,
         elevation: 0,
+        automaticallyImplyLeading: !embedded,
         title: const Text('Profile', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
       body: ListView(
