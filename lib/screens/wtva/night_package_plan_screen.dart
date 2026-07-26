@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/customer_portal_api.dart';
 import '../../services/night_package_checkout_service.dart';
 import '../../services/night_packages_repository.dart';
 import '../../theme/figma_theme.dart';
@@ -7,6 +8,7 @@ import '../../utils/vibe_copy.dart';
 import '../../widgets/wtva/venue_preview_sheet.dart';
 import '../../widgets/wtva/vibe_flow_steps.dart';
 import 'concierge_sheet.dart';
+import 'night_package_orders_screen.dart';
 import 'night_package_success_screen.dart';
 import 'vibe_split_waiting_screen.dart';
 
@@ -451,6 +453,18 @@ class _NightPackagePlanScreenState extends State<NightPackagePlanScreen> {
           ),
         ),
       );
+    } on NightPackageConnectGapException catch (e) {
+      if (!mounted) return;
+      setState(() => _checkingOut = false);
+      if (!e.canRequestBooking) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+        return;
+      }
+      final requested = await _showRequestToBookSheet(e);
+      if (requested != true || !mounted) return;
+      await _submitBookingRequest();
     } catch (e) {
       if (!mounted) return;
       final msg = e is StateError ? e.message : 'Checkout failed';
@@ -459,6 +473,150 @@ class _NightPackagePlanScreenState extends State<NightPackagePlanScreen> {
     } finally {
       if (mounted) setState(() => _checkingOut = false);
     }
+  }
+
+  Future<bool?> _showRequestToBookSheet(
+    NightPackageConnectGapException gap,
+  ) {
+    final venues = gap.venueNames;
+    return showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: WtvaColors.dark400,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Request to book',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: WtvaColors.neutral50,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  venues.isEmpty
+                      ? gap.message
+                      : 'Some places still need payout setup for instant checkout'
+                          '${venues.isNotEmpty ? ': ${venues.join(', ')}' : ''}. '
+                          'Request this vibe — once every venue confirms, you pay the full total.',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.4,
+                    color: WtvaColors.neutral300,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Requests expire in 48 hours if venues don’t all confirm.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: WtvaColors.neutral300,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: WtvaColors.accentPurple,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    child: const Text('Request to book'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Not now'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _submitBookingRequest() async {
+    setState(() => _checkingOut = true);
+    try {
+      final result =
+          await NightPackageCheckoutService.instance.requestBooking(
+        packageId: widget.package.id,
+        partySize: _partySize,
+        stopOfferIds: _stops.map((s) => s.id).toList(),
+        startsOn: _startsOnIso,
+      );
+      if (!mounted) return;
+      final expires = result.expiresAt;
+      final expiresLabel = expires == null
+          ? ''
+          : ' Expires ${_formatExpires(expires)}.';
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: WtvaColors.dark400,
+          title: const Text(
+            'Request sent',
+            style: TextStyle(color: WtvaColors.neutral50),
+          ),
+          content: Text(
+            'Venues have 48 hours to confirm.${expiresLabel.isEmpty ? '' : expiresLabel} '
+            'You’ll pay once everyone accepts. Ref ${result.confirmationCode}.',
+            style: const TextStyle(color: WtvaColors.neutral300),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const NightPackageOrdersScreen()),
+        (route) => route.isFirst,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e is StateError ? e.message : 'Could not send request';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    } finally {
+      if (mounted) setState(() => _checkingOut = false);
+    }
+  }
+
+  String _formatExpires(DateTime dt) {
+    final local = dt.toLocal();
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final h = local.hour > 12
+        ? local.hour - 12
+        : (local.hour == 0 ? 12 : local.hour);
+    final ampm = local.hour >= 12 ? 'PM' : 'AM';
+    final m = local.minute.toString().padLeft(2, '0');
+    return '${months[local.month - 1]} ${local.day}, $h:$m $ampm';
   }
 
   @override

@@ -18,12 +18,15 @@ class NightPackageCheckoutService {
     required int partySize,
     required List<String> stopOfferIds,
     required String startsOn,
+    String? orderId,
   }) async {
-    if (stopOfferIds.isEmpty) {
-      throw StateError('Add at least one stop to your vibe');
-    }
-    if (startsOn.isEmpty) {
-      throw StateError('Pick a start date for your vibe');
+    if (orderId == null || orderId.isEmpty) {
+      if (stopOfferIds.isEmpty) {
+        throw StateError('Add at least one stop to your vibe');
+      }
+      if (startsOn.isEmpty) {
+        throw StateError('Pick a start date for your vibe');
+      }
     }
 
     final token =
@@ -43,6 +46,7 @@ class NightPackageCheckoutService {
           partySize: partySize,
           stopOfferIds: stopOfferIds,
           startsOn: startsOn,
+          orderId: orderId,
         )
         .timeout(
           const Duration(seconds: 30),
@@ -60,6 +64,34 @@ class NightPackageCheckoutService {
 
     await _api.confirmNightPackagePayment(intent.paymentIntentId);
     return intent;
+  }
+
+  /// Request-to-book when venues lack Stripe Connect (no payment yet).
+  Future<NightPackageBookingRequest> requestBooking({
+    required String packageId,
+    required int partySize,
+    required List<String> stopOfferIds,
+    required String startsOn,
+  }) async {
+    if (stopOfferIds.isEmpty) {
+      throw StateError('Add at least one stop to your vibe');
+    }
+    if (startsOn.isEmpty) {
+      throw StateError('Pick a start date for your vibe');
+    }
+
+    final token =
+        SupabaseBootstrap.client?.auth.currentSession?.accessToken ?? '';
+    if (token.isEmpty) {
+      throw StateError('Sign in to continue.');
+    }
+
+    return _api.requestNightPackageBooking(
+      packageId: packageId,
+      partySize: partySize,
+      stopOfferIds: stopOfferIds,
+      startsOn: startsOn,
+    );
   }
 
   /// Create split group, email guests, return waiting-room details (host may pay later).

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../services/night_package_checkout_service.dart';
 import '../../services/night_packages_repository.dart';
 import '../../theme/figma_theme.dart';
 import '../../utils/vibe_copy.dart';
+import 'night_package_success_screen.dart';
 import 'vibe_split_waiting_screen.dart';
 
 class NightPackageOrdersScreen extends StatefulWidget {
@@ -14,6 +16,7 @@ class NightPackageOrdersScreen extends StatefulWidget {
 
 class _NightPackageOrdersScreenState extends State<NightPackageOrdersScreen> {
   late Future<_MyPlansData> _future;
+  String? _payingOrderId;
 
   @override
   void initState() {
@@ -51,6 +54,84 @@ class _NightPackageOrdersScreenState extends State<NightPackageOrdersScreen> {
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
     return '${months[month - 1]} $day, $year';
+  }
+
+  String _formatExpires(DateTime dt) {
+    final local = dt.toLocal();
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final h = local.hour > 12
+        ? local.hour - 12
+        : (local.hour == 0 ? 12 : local.hour);
+    final ampm = local.hour >= 12 ? 'PM' : 'AM';
+    final m = local.minute.toString().padLeft(2, '0');
+    return '${months[local.month - 1]} ${local.day}, $h:$m $ampm';
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'requested':
+        return 'Waiting on venues';
+      case 'awaiting_payment':
+        return 'Ready to pay';
+      case 'expired':
+        return 'Request expired';
+      case 'cancelled':
+        return 'Cancelled';
+      case 'paid':
+        return 'Your vibe';
+      default:
+        return status;
+    }
+  }
+
+  String _stopStatusLabel(String status) {
+    return status.replaceAll('_', ' ');
+  }
+
+  Future<void> _payAwaitingOrder(NightPackageOrderRecord order) async {
+    final packageId = order.packageId;
+    if (packageId == null || packageId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Missing package for this plan')),
+      );
+      return;
+    }
+    setState(() => _payingOrderId = order.id);
+    try {
+      final result = await NightPackageCheckoutService.instance.purchase(
+        context: context,
+        packageId: packageId,
+        partySize: order.partySize,
+        stopOfferIds: const [],
+        startsOn: order.startsOn ?? '',
+        orderId: order.id,
+      );
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => NightPackageSuccessScreen(
+            packageName: result.packageName,
+            amount: result.amount,
+            partySize: result.partySize,
+            stopCount: result.stopCount,
+            startsOnLabel: _formatStartsOn(order.startsOn),
+          ),
+        ),
+      );
+      setState(() {
+        _future = _load();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e is StateError ? e.message : 'Checkout failed';
+      if (msg == 'Payment cancelled') return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    } finally {
+      if (mounted) setState(() => _payingOrderId = null);
+    }
   }
 
   Widget _openSplitCard(OpenVibeSplitRecord split) {
@@ -139,25 +220,33 @@ class _NightPackageOrdersScreenState extends State<NightPackageOrdersScreen> {
 
   Widget _orderCard(NightPackageOrderRecord order) {
     final startsLabel = _formatStartsOn(order.startsOn);
+    final isPaid = order.isPaid;
+    final paying = _payingOrderId == order.id;
+    final eyebrow = _statusLabel(order.status).toUpperCase();
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: WtvaColors.dark400,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: WtvaColors.night200.withValues(alpha: 0.55),
+          color: order.isAwaitingPayment
+              ? WtvaColors.accentPurple.withValues(alpha: 0.55)
+              : WtvaColors.night200.withValues(alpha: 0.55),
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'YOUR VIBE',
+          Text(
+            eyebrow,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.6,
-              color: WtvaColors.accentPurple,
+              color: order.isExpired
+                  ? WtvaColors.neutral300
+                  : WtvaColors.accentPurple,
             ),
           ),
           const SizedBox(height: 4),
@@ -173,15 +262,28 @@ class _NightPackageOrdersScreenState extends State<NightPackageOrdersScreen> {
           Text(
             [
               if (startsLabel != null) 'Starting $startsLabel',
-              'Confirmation ${order.confirmationCode}',
+              'Ref ${order.confirmationCode}',
               '${order.partySize} guests',
               _money(order.totalCents),
+              if (order.isRequested && order.expiresAt != null)
+                'expires ${_formatExpires(order.expiresAt!)}',
             ].join(' · '),
             style: const TextStyle(
               fontSize: 13,
               color: WtvaColors.neutral300,
             ),
           ),
+          if (order.isRequested) ...[
+            const SizedBox(height: 10),
+            const Text(
+              'Venues confirm first. You’ll pay the full total once everyone accepts.',
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.35,
+                color: WtvaColors.neutral300,
+              ),
+            ),
+          ],
           if (order.stops.isNotEmpty) ...[
             const SizedBox(height: 18),
             ...order.stops.asMap().entries.map((entry) {
@@ -252,16 +354,28 @@ class _NightPackageOrdersScreenState extends State<NightPackageOrdersScreen> {
                                   color: WtvaColors.neutral300,
                                 ),
                               ),
-                            const SizedBox(height: 4),
-                            Text(
-                              s.redemptionCode,
-                              style: const TextStyle(
-                                fontFamily: 'monospace',
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: WtvaColors.accentPurple,
+                            if (!isPaid) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                _stopStatusLabel(s.status),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: WtvaColors.neutral300,
+                                ),
                               ),
-                            ),
+                            ] else if (s.redemptionCode.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                s.redemptionCode,
+                                style: const TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: WtvaColors.accentPurple,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -270,6 +384,28 @@ class _NightPackageOrdersScreenState extends State<NightPackageOrdersScreen> {
                 ),
               );
             }),
+          ],
+          if (order.isAwaitingPayment) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: paying ? null : () => _payAwaitingOrder(order),
+                style: FilledButton.styleFrom(
+                  backgroundColor: WtvaColors.accentPurple,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                child: Text(
+                  paying
+                      ? 'Opening checkout…'
+                      : 'Pay now · ${_money(order.totalCents)}',
+                ),
+              ),
+            ),
           ],
         ],
       ),
@@ -318,7 +454,7 @@ class _NightPackageOrdersScreenState extends State<NightPackageOrdersScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'Open splits and booked itineraries show up here.',
+                      'Open requests, splits, and booked itineraries show up here.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 12,
@@ -357,7 +493,7 @@ class _NightPackageOrdersScreenState extends State<NightPackageOrdersScreen> {
                 const Padding(
                   padding: EdgeInsets.only(bottom: 10, top: 4),
                   child: Text(
-                    'Booked',
+                    'Your vibes',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,

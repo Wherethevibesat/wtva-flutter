@@ -110,6 +110,35 @@ class NightPackagePaymentIntent {
   final String? mobilePayUrl;
 }
 
+class NightPackageConnectGapException implements Exception {
+  NightPackageConnectGapException({
+    required this.message,
+    required this.venueNames,
+    this.canRequestBooking = true,
+  });
+
+  final String message;
+  final List<String> venueNames;
+  final bool canRequestBooking;
+
+  @override
+  String toString() => message;
+}
+
+class NightPackageBookingRequest {
+  const NightPackageBookingRequest({
+    required this.orderId,
+    required this.expiresAt,
+    required this.confirmationCode,
+    required this.status,
+  });
+
+  final String orderId;
+  final DateTime? expiresAt;
+  final String confirmationCode;
+  final String status;
+}
+
 class VibeSplitGroupCreated {
   const VibeSplitGroupCreated({
     required this.groupId,
@@ -287,6 +316,7 @@ class CustomerPortalApi {
     required int partySize,
     required List<String> stopOfferIds,
     required String startsOn,
+    String? orderId,
   }) async {
     late http.Response res;
     try {
@@ -298,6 +328,7 @@ class CustomerPortalApi {
           'partySize': partySize,
           'stopOfferIds': stopOfferIds,
           'startsOn': startsOn,
+          if (orderId != null && orderId.isNotEmpty) 'orderId': orderId,
         }),
       );
     } catch (e) {
@@ -308,6 +339,23 @@ class CustomerPortalApi {
     }
     final body = _decode(res);
     if (res.statusCode != 200) {
+      final gaps = body['venuesNeedingConnect'];
+      if (res.statusCode == 409 && gaps is List && gaps.isNotEmpty) {
+        final names = gaps
+            .map((g) {
+              if (g is Map) return (g['venueName'] as String?)?.trim() ?? '';
+              return '';
+            })
+            .where((n) => n.isNotEmpty)
+            .toList();
+        throw NightPackageConnectGapException(
+          message: body['error'] as String? ??
+              'Some places need payout setup before instant checkout.',
+          venueNames: names,
+          canRequestBooking: body['canRequestBooking'] != false &&
+              (orderId == null || orderId.isEmpty),
+        );
+      }
       throw StateError(
         body['error'] as String? ??
             'Could not start checkout (${res.statusCode})',
@@ -326,6 +374,54 @@ class CustomerPortalApi {
       partySize: (body['partySize'] as num?)?.toInt() ?? partySize,
       stopCount: (body['stopCount'] as num?)?.toInt() ?? stopOfferIds.length,
       mobilePayUrl: body['mobilePayUrl'] as String?,
+    );
+  }
+
+  Future<NightPackageBookingRequest> requestNightPackageBooking({
+    required String packageId,
+    required int partySize,
+    required List<String> stopOfferIds,
+    required String startsOn,
+  }) async {
+    late http.Response res;
+    try {
+      res = await http.post(
+        _uri('/api/checkout/night-package/request'),
+        headers: await _headers(),
+        body: jsonEncode({
+          'packageId': packageId,
+          'partySize': partySize,
+          'stopOfferIds': stopOfferIds,
+          'startsOn': startsOn,
+        }),
+      );
+    } catch (e) {
+      throw StateError(
+        'Could not reach booking request (${CustomerPortalConfig.apiBaseUrl}). '
+        'Check your connection and try again.',
+      );
+    }
+    final body = _decode(res);
+    if (res.statusCode != 200) {
+      throw StateError(
+        body['error'] as String? ??
+            'Could not send booking request (${res.statusCode})',
+      );
+    }
+    final orderId = body['orderId'] as String?;
+    if (orderId == null || orderId.isEmpty) {
+      throw StateError('Invalid booking request response');
+    }
+    DateTime? expiresAt;
+    final rawExpires = body['expiresAt'];
+    if (rawExpires is String && rawExpires.isNotEmpty) {
+      expiresAt = DateTime.tryParse(rawExpires);
+    }
+    return NightPackageBookingRequest(
+      orderId: orderId,
+      expiresAt: expiresAt,
+      confirmationCode: body['confirmationCode'] as String? ?? '',
+      status: body['status'] as String? ?? 'requested',
     );
   }
 

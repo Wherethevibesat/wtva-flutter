@@ -110,6 +110,7 @@ class NightPackageOrderStopRecord {
     this.venueName,
     this.lineTotalCents,
     this.sortOrder = 0,
+    this.status = 'confirmed',
   });
 
   final String title;
@@ -118,6 +119,7 @@ class NightPackageOrderStopRecord {
   final String? venueName;
   final int? lineTotalCents;
   final int sortOrder;
+  final String status;
 }
 
 class NightPackageOrderRecord {
@@ -129,6 +131,9 @@ class NightPackageOrderRecord {
     required this.totalCents,
     required this.status,
     this.startsOn,
+    this.expiresAt,
+    this.packageId,
+    this.packageSlug,
     required this.stops,
   });
 
@@ -139,7 +144,15 @@ class NightPackageOrderRecord {
   final int totalCents;
   final String status;
   final String? startsOn;
+  final DateTime? expiresAt;
+  final String? packageId;
+  final String? packageSlug;
   final List<NightPackageOrderStopRecord> stops;
+
+  bool get isPaid => status == 'paid';
+  bool get isRequested => status == 'requested';
+  bool get isAwaitingPayment => status == 'awaiting_payment';
+  bool get isExpired => status == 'expired';
 }
 
 /// Open split-pay group the user can finish later (My Plans).
@@ -414,6 +427,53 @@ class NightPackagesRepository {
     }
   }
 
+  NightPackageOrderRecord _mapOrderRow(Map<String, dynamic> row) {
+    final pkgRaw = row['package'];
+    final packageTitle = pkgRaw is Map
+        ? (pkgRaw['title'] as String? ?? 'Your vibe')
+        : 'Your vibe';
+    final packageId = pkgRaw is Map ? pkgRaw['id'] as String? : null;
+    final packageSlug = pkgRaw is Map ? pkgRaw['slug'] as String? : null;
+    final status = row['status'] as String? ?? 'paid';
+    final isPaid = status == 'paid';
+    DateTime? expiresAt;
+    final rawExpires = row['expires_at'];
+    if (rawExpires is String && rawExpires.isNotEmpty) {
+      expiresAt = DateTime.tryParse(rawExpires);
+    }
+    final stopRows = (row['stops'] as List?) ?? const [];
+    final stops = stopRows.cast<Map<String, dynamic>>().map((s) {
+      final venueRaw = s['venue'];
+      final venueName =
+          venueRaw is Map ? venueRaw['name'] as String? : null;
+      final stopStatus = s['status'] as String? ?? 'confirmed';
+      return NightPackageOrderStopRecord(
+        title: s['title'] as String? ?? 'Stop',
+        redemptionCode:
+            isPaid ? (s['redemption_code'] as String? ?? '') : '',
+        scheduledLabel: s['scheduled_label'] as String?,
+        venueName: venueName,
+        lineTotalCents: (s['line_total_cents'] as num?)?.toInt(),
+        sortOrder: (s['sort_order'] as num?)?.toInt() ?? 0,
+        status: stopStatus,
+      );
+    }).toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    return NightPackageOrderRecord(
+      id: row['id'] as String,
+      confirmationCode: row['confirmation_code'] as String? ?? '',
+      packageTitle: packageTitle,
+      partySize: (row['party_size'] as num?)?.toInt() ?? 1,
+      totalCents: (row['total_cents'] as num?)?.toInt() ?? 0,
+      status: status,
+      startsOn: row['starts_on'] as String?,
+      expiresAt: expiresAt,
+      packageId: packageId ?? row['package_id'] as String?,
+      packageSlug: packageSlug,
+      stops: stops,
+    );
+  }
+
   Future<List<NightPackageOrderRecord>> listMyOrders() async {
     if (!AppConfig.useSupabaseData || !SupabaseBootstrap.initialized) {
       return const [];
@@ -427,53 +487,27 @@ class NightPackagesRepository {
           .from('night_package_orders')
           .select('''
             id, confirmation_code, party_size, starts_on, total_cents, status,
-            package:night_packages(title),
+            expires_at, package_id,
+            package:night_packages(id, title, slug),
             stops:night_package_order_stops(
-              title, redemption_code, scheduled_label, sort_order,
+              title, redemption_code, scheduled_label, sort_order, status,
               line_total_cents, venue:venues(name)
             )
           ''')
           .eq('user_id', userId)
           .order('created_at', ascending: false);
-      return (rows as List).cast<Map<String, dynamic>>().map((row) {
-        final pkgRaw = row['package'];
-        final packageTitle = pkgRaw is Map
-            ? (pkgRaw['title'] as String? ?? 'Your vibe')
-            : 'Your vibe';
-        final stopRows = (row['stops'] as List?) ?? const [];
-        final stops = stopRows.cast<Map<String, dynamic>>().map((s) {
-          final venueRaw = s['venue'];
-          final venueName =
-              venueRaw is Map ? venueRaw['name'] as String? : null;
-          return NightPackageOrderStopRecord(
-            title: s['title'] as String? ?? 'Stop',
-            redemptionCode: s['redemption_code'] as String? ?? '',
-            scheduledLabel: s['scheduled_label'] as String?,
-            venueName: venueName,
-            lineTotalCents: (s['line_total_cents'] as num?)?.toInt(),
-            sortOrder: (s['sort_order'] as num?)?.toInt() ?? 0,
-          );
-        }).toList()
-          ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-        return NightPackageOrderRecord(
-          id: row['id'] as String,
-          confirmationCode: row['confirmation_code'] as String? ?? '',
-          packageTitle: packageTitle,
-          partySize: (row['party_size'] as num?)?.toInt() ?? 1,
-          totalCents: (row['total_cents'] as num?)?.toInt() ?? 0,
-          status: row['status'] as String? ?? 'paid',
-          startsOn: row['starts_on'] as String?,
-          stops: stops,
-        );
-      }).toList();
+      return (rows as List)
+          .cast<Map<String, dynamic>>()
+          .map(_mapOrderRow)
+          .toList();
     } catch (_) {
-      // starts_on may be missing pre-migration
+      // Older schema / missing expires_at or stop status
       try {
         final rows = await client
             .from('night_package_orders')
             .select('''
-              id, confirmation_code, party_size, total_cents, status,
-              package:night_packages(title),
+              id, confirmation_code, party_size, starts_on, total_cents, status,
+              package:night_packages(id, title, slug),
               stops:night_package_order_stops(
                 title, redemption_code, scheduled_label, sort_order,
                 line_total_cents, venue:venues(name)
@@ -481,38 +515,31 @@ class NightPackagesRepository {
             ''')
             .eq('user_id', userId)
             .order('created_at', ascending: false);
-        return (rows as List).cast<Map<String, dynamic>>().map((row) {
-          final pkgRaw = row['package'];
-          final packageTitle = pkgRaw is Map
-              ? (pkgRaw['title'] as String? ?? 'Your vibe')
-              : 'Your vibe';
-          final stopRows = (row['stops'] as List?) ?? const [];
-          final stops = stopRows.cast<Map<String, dynamic>>().map((s) {
-            final venueRaw = s['venue'];
-            final venueName =
-                venueRaw is Map ? venueRaw['name'] as String? : null;
-            return NightPackageOrderStopRecord(
-              title: s['title'] as String? ?? 'Stop',
-              redemptionCode: s['redemption_code'] as String? ?? '',
-              scheduledLabel: s['scheduled_label'] as String?,
-              venueName: venueName,
-              lineTotalCents: (s['line_total_cents'] as num?)?.toInt(),
-              sortOrder: (s['sort_order'] as num?)?.toInt() ?? 0,
-            );
-          }).toList()
-            ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-          return NightPackageOrderRecord(
-            id: row['id'] as String,
-            confirmationCode: row['confirmation_code'] as String? ?? '',
-            packageTitle: packageTitle,
-            partySize: (row['party_size'] as num?)?.toInt() ?? 1,
-            totalCents: (row['total_cents'] as num?)?.toInt() ?? 0,
-            status: row['status'] as String? ?? 'paid',
-            stops: stops,
-          );
-        }).toList();
+        return (rows as List)
+            .cast<Map<String, dynamic>>()
+            .map(_mapOrderRow)
+            .toList();
       } catch (_) {
-        return const [];
+        try {
+          final rows = await client
+              .from('night_package_orders')
+              .select('''
+                id, confirmation_code, party_size, total_cents, status,
+                package:night_packages(title),
+                stops:night_package_order_stops(
+                  title, redemption_code, scheduled_label, sort_order,
+                  line_total_cents, venue:venues(name)
+                )
+              ''')
+              .eq('user_id', userId)
+              .order('created_at', ascending: false);
+          return (rows as List)
+              .cast<Map<String, dynamic>>()
+              .map(_mapOrderRow)
+              .toList();
+        } catch (_) {
+          return const [];
+        }
       }
     }
   }
