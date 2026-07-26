@@ -42,12 +42,12 @@ class _TonightScreenState extends State<TonightScreen> {
   bool _loading = true;
 
   static const _moods = [
-    (label: 'For You', icon: Icons.local_fire_department_rounded),
+    (label: 'R&B', icon: Icons.music_note_rounded),
     (label: 'Afrobeats', icon: Icons.album_rounded),
     (label: 'Happy Hour', icon: Icons.local_bar_rounded),
     (label: 'After Hours', icon: Icons.nights_stay_rounded),
     (label: 'Rooftops', icon: Icons.apartment_rounded),
-    (label: 'VIP', icon: Icons.workspace_premium_rounded),
+    (label: 'Brunch', icon: Icons.brunch_dining_rounded),
   ];
 
   @override
@@ -162,7 +162,6 @@ class _TonightScreenState extends State<TonightScreen> {
   void _onMoodTap(int index) {
     setState(() => _moodIndex = index);
     final label = _moods[index].label;
-    if (label == 'For You') return;
 
     // Map mood chips to real browse filters (event type or text search).
     final (:eventType, :query) = switch (label) {
@@ -170,7 +169,8 @@ class _TonightScreenState extends State<TonightScreen> {
       'After Hours' => (eventType: 'After Hours', query: null),
       'Afrobeats' => (eventType: null, query: 'Afrobeats'),
       'Rooftops' => (eventType: null, query: 'Rooftop'),
-      'VIP' => (eventType: null, query: 'VIP'),
+      'Brunch' => (eventType: null, query: 'Brunch'),
+      'R&B' => (eventType: null, query: 'R&B'),
       _ => (eventType: null, query: label),
     };
 

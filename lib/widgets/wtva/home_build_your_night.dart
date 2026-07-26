@@ -30,7 +30,7 @@ class HomeBuildYourNightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 14, 16),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -48,73 +48,45 @@ class HomeBuildYourNightCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text(
+            VibeCopy.buildMyVibe,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: WtvaColors.neutral50,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Plan the perfect vibe from start to finish.',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: WtvaColors.neutral300,
+              height: 1.3,
+            ),
+          ),
+          const SizedBox(height: 14),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      VibeCopy.buildMyVibe,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: WtvaColors.neutral50,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Plan the perfect vibe from start to finish.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: WtvaColors.neutral300,
-                        height: 1.3,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final gap = 6.0;
-                        final chipW =
-                            ((constraints.maxWidth - gap * 3) / 4)
-                                .clamp(52.0, 72.0);
-                        return Row(
-                          children: [
-                            for (var i = 0; i < _buildVibeChips.length; i++) ...[
-                              if (i > 0) SizedBox(width: gap),
-                              SizedBox(
-                                width: chipW,
-                                child: _BuildVibeChip(
-                                  label: _buildVibeChips[i].label,
-                                  icon: _buildVibeChips[i].icon,
-                                  onTap: () {
-                                    final key = _buildVibeChips[i].occasionKey;
-                                    if (key == null) {
-                                      onSurpriseMe();
-                                    } else {
-                                      onOccasionTap(key);
-                                    }
-                                  },
-                                ),
-                              ),
-                            ],
-                          ],
-                        );
-                      },
-                    ),
-                  ],
+              for (var i = 0; i < _buildVibeChips.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(
+                  child: _BuildVibeChip(
+                    label: _buildVibeChips[i].label,
+                    icon: _buildVibeChips[i].icon,
+                    onTap: () {
+                      final key = _buildVibeChips[i].occasionKey;
+                      if (key == null) {
+                        onSurpriseMe();
+                      } else {
+                        onOccasionTap(key);
+                      }
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(width: 2),
-              Image.asset(
-                'assets/images/build_vibe_crystal.png',
-                width: 112,
-                height: 112,
-                fit: BoxFit.contain,
-              ),
+              ],
             ],
           ),
           const SizedBox(height: 16),
@@ -180,7 +152,7 @@ class _BuildVibeChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(4, 10, 4, 8),
+          padding: const EdgeInsets.fromLTRB(6, 12, 6, 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: WtvaColors.night200),
@@ -198,7 +170,7 @@ class _BuildVibeChip extends StatelessWidget {
                 blendMode: BlendMode.srcIn,
                 shaderCallback: (bounds) =>
                     WtvaColors.buttonGradient.createShader(bounds),
-                child: Icon(icon, size: 20, color: Colors.white),
+                child: Icon(icon, size: 22, color: Colors.white),
               ),
               const SizedBox(height: 6),
               Text(
@@ -207,7 +179,7 @@ class _BuildVibeChip extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 9,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
                   height: 1.15,
                   color: WtvaColors.neutral200,
