@@ -7,15 +7,11 @@ import '../../theme/wtva_icons.dart';
 class WtvaBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-  final String homeLabel;
-  final IconData homeIcon;
 
   const WtvaBottomNav({
     super.key,
     required this.currentIndex,
     required this.onTap,
-    this.homeLabel = 'Tonight',
-    this.homeIcon = Icons.nightlife_outlined,
   });
 
   @override
@@ -39,32 +35,30 @@ class WtvaBottomNav extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _NavItem(
-                    icon: homeIcon,
-                    label: homeLabel,
+                    icon: Icons.nightlife_outlined,
+                    label: 'Tonight',
                     selected: currentIndex == 0,
                     onTap: () => onTap(0),
                   ),
                   _NavItem(
-                    icon: Icons.event_outlined,
-                    label: 'Events',
+                    icon: Icons.dashboard_outlined,
+                    label: 'Dashboard',
                     selected: currentIndex == 1,
                     onTap: () => onTap(1),
                   ),
-                  _NavItem(
-                    icon: Icons.auto_awesome_outlined,
-                    label: 'Plan',
+                  _PlanFab(
                     selected: currentIndex == 2,
                     onTap: () => onTap(2),
                   ),
                   _NavItem(
-                    icon: Icons.storefront_outlined,
-                    label: 'Venues',
+                    icon: Icons.event_outlined,
+                    label: 'Events',
                     selected: currentIndex == 3,
                     onTap: () => onTap(3),
                   ),
                   _NavItem(
-                    icon: Icons.person_outline_rounded,
-                    label: 'Profile',
+                    icon: Icons.storefront_outlined,
+                    label: 'Venues',
                     selected: currentIndex == 4,
                     onTap: () => onTap(4),
                   ),
@@ -106,8 +100,10 @@ class _NavItem extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 color: color,
                 letterSpacing: -0.1,
@@ -124,6 +120,83 @@ class _NavItem extends StatelessWidget {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PlanFab extends StatefulWidget {
+  const _PlanFab({required this.onTap, required this.selected});
+
+  final VoidCallback onTap;
+  final bool selected;
+
+  @override
+  State<_PlanFab> createState() => _PlanFabState();
+}
+
+class _PlanFabState extends State<_PlanFab> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.92 : 1,
+        duration: const Duration(milliseconds: 120),
+        child: SizedBox(
+          width: 64,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  gradient: WtvaColors.fabGradient,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(
+                      alpha: widget.selected ? 0.4 : 0.22,
+                    ),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: WtvaColors.onPrimary,
+                  size: WtvaIcons.lg,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Plan',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight:
+                      widget.selected ? FontWeight.w800 : FontWeight.w600,
+                  color: widget.selected
+                      ? WtvaColors.accentPurple
+                      : WtvaColors.neutral300,
+                  letterSpacing: -0.1,
+                ),
+              ),
+              if (widget.selected)
+                Container(
+                  margin: const EdgeInsets.only(top: 4),
+                  width: 4,
+                  height: 4,
+                  decoration: const BoxDecoration(
+                    color: WtvaColors.accentPurple,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

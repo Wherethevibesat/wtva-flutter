@@ -215,7 +215,7 @@ class _VenuesBrowseScreenState extends State<VenuesBrowseScreen> {
                               ),
                             ),
                           ),
-                          _VenueGrid(
+                          _VenueList(
                             venues: gridVenues,
                             onFavoriteChanged: () => setState(() {}),
                           ),
@@ -233,7 +233,7 @@ class _VenuesBrowseScreenState extends State<VenuesBrowseScreen> {
                                 ),
                               ),
                             ),
-                            _VenueGrid(
+                            _VenueList(
                               venues: venues.where((v) => !v.featured).toList(),
                               onFavoriteChanged: () => setState(() {}),
                             ),
@@ -449,8 +449,8 @@ class _VenueCategoryChip extends StatelessWidget {
   }
 }
 
-class _VenueGrid extends StatelessWidget {
-  const _VenueGrid({
+class _VenueList extends StatelessWidget {
+  const _VenueList({
     required this.venues,
     required this.onFavoriteChanged,
   });
@@ -462,29 +462,22 @@ class _VenueGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      sliver: SliverGrid(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 14,
-          crossAxisSpacing: 12,
-          childAspectRatio: 0.62,
-        ),
-        delegate: SliverChildBuilderDelegate(
-          (context, i) {
-            final d = venues[i];
-            return _VenueBrowseCard(
-              detail: d,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => VenueDetailScreen(venueId: d.venue.id),
-                ),
+      sliver: SliverList.separated(
+        itemCount: venues.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (context, i) {
+          final d = venues[i];
+          return _VenueBrowseCard(
+            detail: d,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => VenueDetailScreen(venueId: d.venue.id),
               ),
-              onFavoriteChanged: onFavoriteChanged,
-            );
-          },
-          childCount: venues.length,
-        ),
+            ),
+            onFavoriteChanged: onFavoriteChanged,
+          );
+        },
       ),
     );
   }
@@ -502,26 +495,32 @@ class _VenueBrowseCard extends StatelessWidget {
   final VoidCallback onFavoriteChanged;
 
   String get _badgeLabel {
-    if (detail.featured) return 'Featured';
+    if (detail.featured) return 'FEATURED';
     final cat = detail.category.trim();
-    if (cat.isEmpty) return 'Venue';
+    if (cat.isEmpty) return 'VENUE';
     final lower = cat.toLowerCase();
-    if (lower.contains('rooftop')) return 'Rooftop';
-    if (lower.contains('hookah')) return 'Hookah';
-    if (lower.contains('lounge')) return 'Lounge';
-    if (lower.contains('club')) return 'Club';
-    return cat.split(RegExp(r'[\s/·|-]+')).first;
+    if (lower.contains('rooftop')) return 'ROOFTOP';
+    if (lower.contains('hookah')) return 'HOOKAH';
+    if (lower.contains('lounge')) return 'LOUNGE';
+    if (lower.contains('club')) return 'CLUB';
+    return cat.split(RegExp(r'[\s/·|-]+')).first.toUpperCase();
   }
 
   @override
   Widget build(BuildContext context) {
     final v = detail.venue;
     final favorited = FavoritesService.instance.isFavorite(v.id);
-    final tags = detail.services.take(2).toList();
     final hours = detail.hoursLabel.trim();
     final openLabel = hours.isNotEmpty
-        ? (detail.isOpen ? (hours.toLowerCase().startsWith('open') ? hours : 'Open · $hours') : hours)
+        ? (detail.isOpen
+            ? (hours.toLowerCase().startsWith('open') ? hours : 'Open · $hours')
+            : hours)
         : (detail.isOpen ? 'Open now' : 'Closed');
+    final place = [
+      if (detail.category.trim().isNotEmpty) detail.category.trim(),
+      if (detail.neighborhood != null && detail.neighborhood!.isNotEmpty)
+        detail.neighborhood!,
+    ].join(' · ');
 
     return Material(
       color: WtvaColors.dark400,
@@ -535,179 +534,195 @@ class _VenueBrowseCard extends StatelessWidget {
             border: Border.all(color: WtvaColors.night200),
             boxShadow: WtvaColors.cardShadow,
           ),
-          child: Column(
+          padding: const EdgeInsets.all(12),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                flex: 5,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.network(
-                      v.imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(color: WtvaColors.dark300),
-                    ),
-                    Positioned(
-                      left: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          gradient: detail.featured
-                              ? WtvaColors.buttonGradient
-                              : const LinearGradient(
-                                  colors: [Color(0xFFDB2777), Color(0xFFF472B6)],
-                                ),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          _badgeLabel,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Material(
-                        color: Colors.black.withValues(alpha: 0.28),
-                        shape: const CircleBorder(),
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () async {
-                            await FavoritesService.instance.toggle(v.id);
-                            onFavoriteChanged();
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(7),
-                            child: Icon(
-                              favorited ? Icons.favorite : Icons.favorite_border,
-                              size: 16,
-                              color: favorited ? const Color(0xFFF472B6) : Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                flex: 5,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: SizedBox(
+                  width: 92,
+                  height: 108,
+                  child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              v.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14,
-                                height: 1.2,
+                      v.imageUrl.isNotEmpty
+                          ? Image.network(
+                              v.imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  Container(color: WtvaColors.dark300),
+                            )
+                          : Container(
+                              color: WtvaColors.dark300,
+                              child: const Icon(
+                                Icons.storefront_outlined,
+                                color: WtvaColors.accentPurple,
                               ),
                             ),
+                      Positioned(
+                        left: 6,
+                        top: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 4,
                           ),
-                          if (v.rating > 0) ...[
-                            const SizedBox(width: 4),
-                            const Icon(Icons.star_rounded, size: 14, color: Color(0xFFF59E0B)),
-                            const SizedBox(width: 2),
-                            Text(
-                              v.rating.toStringAsFixed(1),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFFF59E0B),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        [
-                          detail.category,
-                          if (detail.neighborhood != null && detail.neighborhood!.isNotEmpty)
-                            detail.neighborhood!,
-                        ].join(' · '),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: WtvaColors.neutral300,
-                        ),
-                      ),
-                      if (tags.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: [
-                            for (var i = 0; i < tags.length; i++)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: i == 0
-                                      ? WtvaColors.accentPurple.withValues(alpha: 0.1)
-                                      : WtvaColors.accentPink.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(
-                                  tags[i],
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: i == 0 ? WtvaColors.accentPurple : WtvaColors.accentPink,
+                          decoration: BoxDecoration(
+                            gradient: detail.featured
+                                ? WtvaColors.buttonGradient
+                                : const LinearGradient(
+                                    colors: [
+                                      Color(0xFFDB2777),
+                                      Color(0xFFF472B6),
+                                    ],
                                   ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                      const Spacer(),
-                      Row(
-                        children: [
-                          Text(
-                            '${v.distanceMiles.toStringAsFixed(1)} mi',
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            _badgeLabel,
                             style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: WtvaColors.neutral300,
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.2,
                             ),
                           ),
-                          const Spacer(),
-                          Flexible(
-                            child: Text(
-                              openLabel,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.right,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: detail.isOpen
-                                    ? WtvaColors.accentGreen
-                                    : WtvaColors.neutral300,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
                 ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            v.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              height: 1.2,
+                            ),
+                          ),
+                        ),
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () async {
+                              await FavoritesService.instance.toggle(v.id);
+                              onFavoriteChanged();
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Icon(
+                                favorited
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                size: 18,
+                                color: favorited
+                                    ? const Color(0xFFF472B6)
+                                    : WtvaColors.neutral300,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (place.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        place,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: WtvaColors.accentPurple,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.place_outlined,
+                          size: 14,
+                          color: WtvaColors.neutral300,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            '${v.distanceMiles.toStringAsFixed(1)} mi away',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: WtvaColors.neutral300,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.schedule,
+                          size: 14,
+                          color: detail.isOpen
+                              ? WtvaColors.accentGreen
+                              : WtvaColors.neutral300,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            openLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: detail.isOpen
+                                  ? WtvaColors.accentGreen
+                                  : WtvaColors.neutral300,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        if (v.rating > 0) ...[
+                          const Icon(
+                            Icons.star_rounded,
+                            size: 14,
+                            color: Color(0xFFF59E0B),
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            v.rating.toStringAsFixed(1),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFFF59E0B),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Icon(Icons.chevron_right, color: WtvaColors.neutral300),
               ),
             ],
           ),

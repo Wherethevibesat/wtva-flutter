@@ -10,10 +10,12 @@ import '../../theme/figma_theme.dart';
 import '../../widgets/wtva/home_build_your_night.dart';
 import '../../widgets/wtva/home_hero_search.dart';
 import '../../widgets/wtva/tonight_event_card.dart';
+import '../../utils/account_gate.dart';
 import 'city_picker_sheet.dart';
 import 'concierge_sheet.dart';
 import 'event_detail_screen.dart';
 import 'events_browse_screen.dart';
+import 'messages_screen.dart';
 import 'more_screen.dart';
 import 'night_package_detail_screen.dart';
 import 'night_packages_browse_screen.dart';
@@ -165,6 +167,19 @@ class _TonightScreenState extends State<TonightScreen> {
                 context,
                 MaterialPageRoute(builder: (_) => const WtvaNotificationsScreen()),
               ),
+              onInbox: () async {
+                if (!await AccountGate.requireSignIn(
+                  context,
+                  message: 'Log in or sign up to open your inbox.',
+                )) {
+                  return;
+                }
+                if (!context.mounted) return;
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MessagesScreen()),
+                );
+              },
               onMore: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const MoreScreen()),
@@ -428,6 +443,7 @@ class _HeroHeader extends StatelessWidget {
     required this.onMoodTap,
     required this.onCityTap,
     required this.onNotify,
+    required this.onInbox,
     required this.onMore,
     required this.onSearch,
   });
@@ -439,6 +455,7 @@ class _HeroHeader extends StatelessWidget {
   final ValueChanged<int> onMoodTap;
   final VoidCallback onCityTap;
   final VoidCallback onNotify;
+  final VoidCallback onInbox;
   final VoidCallback onMore;
   final VoidCallback onSearch;
 
@@ -522,6 +539,11 @@ class _HeroHeader extends StatelessWidget {
                         IconButton(
                           onPressed: onNotify,
                           icon: const Icon(Icons.notifications_none_rounded, color: Colors.white),
+                        ),
+                        IconButton(
+                          onPressed: onInbox,
+                          tooltip: 'Inbox',
+                          icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
                         ),
                         IconButton(
                           onPressed: onMore,

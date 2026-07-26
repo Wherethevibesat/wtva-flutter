@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../services/user_service.dart';
 import '../../theme/figma_theme.dart';
 import '../../widgets/wtva/wtva_bottom_nav.dart';
 import 'concierge_sheet.dart';
@@ -10,9 +9,8 @@ import 'member_dashboard_screen.dart';
 import 'night_packages_browse_screen.dart';
 import 'tonight_screen.dart';
 import 'venues_browse_screen.dart';
-import 'wtva_profile_screen.dart';
 
-/// Main app shell — Home / Events / Plan / Venues / Profile.
+/// Main app shell — Tonight / Dashboard / Plan / Events / Venues.
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -21,13 +19,8 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  /// 0 Home, 1 Events, 2 Plan, 3 Venues, 4 Profile
+  /// 0 Tonight, 1 Dashboard, 2 Plan (center), 3 Events, 4 Venues
   int _navIndex = 0;
-
-  /// Signed-in Home tab: dashboard by default; flip to Tonight (main feed).
-  bool _showTonightHome = false;
-
-  bool get _signedIn => !UserService().isGuest && UserService().isLoggedIn;
 
   @override
   void initState() {
@@ -44,45 +37,27 @@ class _AppShellState extends State<AppShell> {
     });
   }
 
-  void _openTonightHome() {
-    setState(() {
-      _navIndex = 0;
-      _showTonightHome = true;
-    });
-  }
-
-  void _openDashboardHome() {
-    setState(() {
-      _navIndex = 0;
-      _showTonightHome = false;
-    });
-  }
-
   Widget get _body {
     switch (_navIndex) {
       case 1:
-        return const EventsBrowseScreen(embedded: true);
+        return MemberDashboardScreen(
+          embedded: true,
+          onOpenTonight: () => setState(() => _navIndex = 0),
+        );
       case 2:
         return const NightPackagesBrowseScreen(embedded: true);
       case 3:
-        return const VenuesBrowseScreen(embedded: true);
+        return const EventsBrowseScreen(embedded: true);
       case 4:
-        return const WtvaProfileScreen(embedded: true);
+        return const VenuesBrowseScreen(embedded: true);
       case 0:
       default:
-        if (_signedIn && !_showTonightHome) {
-          return MemberDashboardScreen(
-            embedded: true,
-            onOpenTonight: _openTonightHome,
-          );
-        }
         return const TonightScreen();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final onTonight = _signedIn && _showTonightHome && _navIndex == 0;
     return Scaffold(
       backgroundColor: WtvaColors.dark500,
       body: _body,
@@ -92,18 +67,7 @@ class _AppShellState extends State<AppShell> {
       ),
       bottomNavigationBar: WtvaBottomNav(
         currentIndex: _navIndex,
-        homeLabel: !_signedIn || onTonight ? 'Tonight' : 'Home',
-        homeIcon: !_signedIn || onTonight
-            ? Icons.nightlife_outlined
-            : Icons.dashboard_outlined,
-        onTap: (index) {
-          if (index == 0 && _signedIn) {
-            // Home / Tonight tab always returns to the personal dashboard.
-            _openDashboardHome();
-            return;
-          }
-          setState(() => _navIndex = index);
-        },
+        onTap: (index) => setState(() => _navIndex = index),
       ),
     );
   }

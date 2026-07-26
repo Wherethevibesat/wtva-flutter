@@ -244,8 +244,8 @@ class _NightPackagesBrowseScreenState extends State<NightPackagesBrowseScreen> {
                   else
                     ...packages.map(
                       (pkg) => Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: _PackageImageCard(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _PackageBrowseCard(
                           package: pkg,
                           onTap: () => Navigator.push(
                             context,
@@ -669,8 +669,8 @@ class _EmptyVibes extends StatelessWidget {
   }
 }
 
-class _PackageImageCard extends StatelessWidget {
-  const _PackageImageCard({required this.package, required this.onTap});
+class _PackageBrowseCard extends StatelessWidget {
+  const _PackageBrowseCard({required this.package, required this.onTap});
 
   final NightPackageRecord package;
   final VoidCallback onTap;
@@ -680,26 +680,29 @@ class _PackageImageCard extends StatelessWidget {
     final tags = package.vibeTags.isNotEmpty
         ? package.vibeTags
         : package.stops.map((s) => slotTypeLabel(s.slotType)).toList();
+    final meta = tags.take(3).join(' · ');
 
     return Material(
       color: WtvaColors.dark400,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(18),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
-        child: Ink(
+        child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: WtvaColors.night200),
             boxShadow: WtvaColors.cardShadow,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-                child: AspectRatio(
-                  aspectRatio: 16 / 10,
+                borderRadius: BorderRadius.circular(14),
+                child: SizedBox(
+                  width: 92,
+                  height: 108,
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
@@ -714,11 +717,11 @@ class _PackageImageCard extends StatelessWidget {
                       ),
                       if (package.isFeatured)
                         Positioned(
-                          left: 12,
-                          top: 12,
+                          left: 6,
+                          top: 6,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
+                              horizontal: 7,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
@@ -729,9 +732,9 @@ class _PackageImageCard extends StatelessWidget {
                               VibeCopy.featuredBadge,
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 10,
+                                fontSize: 9,
                                 fontWeight: FontWeight.w800,
-                                letterSpacing: 0.4,
+                                letterSpacing: 0.2,
                               ),
                             ),
                           ),
@@ -740,94 +743,95 @@ class _PackageImageCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+              const SizedBox(width: 12),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       package.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 18,
                         fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        height: 1.2,
                         color: WtvaColors.neutral50,
                       ),
                     ),
                     if (package.displayTagline.isNotEmpty) ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         package.displayTagline,
-                        maxLines: 3,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
+                          color: WtvaColors.accentPurple,
+                          fontWeight: FontWeight.w700,
                           fontSize: 13,
-                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                    if (meta.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.route_outlined,
+                            size: 14,
+                            color: WtvaColors.neutral300,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              meta,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: WtvaColors.neutral300,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.layers_outlined,
+                          size: 14,
                           color: WtvaColors.neutral300,
                         ),
-                      ),
-                    ],
-                    if (tags.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: tags
-                            .take(5)
-                            .map(
-                              (tag) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: WtvaColors.accentPurple
-                                      .withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(
-                                  tag,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: WtvaColors.accentPurple,
-                                  ),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: WtvaColors.buttonGradient,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                VibeCopy.viewVibe,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              SizedBox(width: 6),
-                              Icon(Icons.arrow_forward_rounded,
-                                  color: Colors.white, size: 16),
-                            ],
+                        const SizedBox(width: 4),
+                        Text(
+                          '${package.stops.length} '
+                          '${package.stops.length == 1 ? 'stop' : 'stops'}',
+                          style: const TextStyle(
+                            color: WtvaColors.neutral300,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ),
+                        const Spacer(),
+                        Text(
+                          VibeCopy.viewVibe,
+                          style: TextStyle(
+                            color: WtvaColors.accentPurple,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Icon(Icons.chevron_right, color: WtvaColors.neutral300),
               ),
             ],
           ),
